@@ -63,6 +63,16 @@ L'intégration Git native de Fabric n'accepte pas GitHub sur notre tenant (seul 
 
 Les notebooks qui ne sont pas dans le dépôt (ex. créés par un coéquipier directement dans Fabric) ne sont jamais touchés. En revanche, une modification faite dans Fabric sur un notebook synchronisé est **écrasée** à la synchronisation suivante : il faut modifier le code dans le dépôt. Si un notebook synchronisé est ouvert pendant la synchronisation, Fabric affiche « Another user has saved changes » : cliquer sur **View changes** puis **Keep this version** côté *Saved version*.
 
+### Si le notebook `00_synchro_github` n'existe pas (création bloquée dans Fabric)
+
+La même synchronisation se lance depuis une cellule de **n'importe quel notebook existant**. Ajouter son nom à `EXCLURE` pour qu'il ne s'écrase pas lui-même, puis supprimer la cellule après usage :
+
+```python
+DEPOT, BRANCHE, DOSSIER, LAKEHOUSE_PAR_DEFAUT = "meardagoat/hackathon-mobility-citiz", "main", "fabric/notebooks", "LakeHouseMicrosoft"
+EXCLURE = "00_synchro_github,NOM_DU_NOTEBOOK_HOTE"
+import requests; exec(requests.get(f"https://raw.githubusercontent.com/{DEPOT}/{BRANCHE}/fabric/synchro_github.py").text)
+```
+
 ## Modifier la collecte
 
 Les notebooks sont **générés** à partir des scripts de `src/ingestion/`. Pour modifier la collecte :
