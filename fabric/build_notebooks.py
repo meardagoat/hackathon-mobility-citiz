@@ -134,24 +134,29 @@ def construire(nb: dict) -> dict:
 
 
 def construire_sync() -> dict:
-    """Notebook 00_synchro_github : met à jour les notebooks Fabric depuis une branche GitHub."""
+    """Notebook 00_synchro_github : met à jour les notebooks Fabric depuis une branche GitHub.
+
+    Il ne contient que les paramètres et le chargement de fabric/synchro_github.py depuis GitHub :
+    Fabric interdit à un notebook de réécrire sa propre définition, il ne peut donc pas se mettre
+    à jour lui-même, mais il exécute toujours la dernière version du script."""
     code = (RACINE / "fabric" / "synchro_github.py").read_text()
-    _, doc, code = code.split('"""', 2)
+    _, doc, _ = code.split('"""', 2)
     return {
         **construire(NOTEBOOKS[0]),
         "cells": [
             _cellule("markdown", "# Synchronisation GitHub → Fabric\n\n" + doc.strip() + "\n\n"
-                     "*Notebook généré depuis `fabric/synchro_github.py` par `fabric/build_notebooks.py`.*"),
+                     "Ce notebook exécute la dernière version de `fabric/synchro_github.py` sur la branche choisie. "
+                     "Il ne se met jamais à jour lui-même (Fabric l'interdit) : il est exclu de la synchronisation."),
             _cellule("code", 'DEPOT = "meardagoat/hackathon-mobility-citiz"\n'
                              'BRANCHE = "main"  # branche à déployer dans Fabric\n'
                              'DOSSIER = "fabric/notebooks"\n'
                              'EXCLURE = "00_synchro_github"  # notebooks à ne pas écraser, séparés par des virgules\n'
-                             'LAKEHOUSE_PAR_DEFAUT = "LakeHouseMicrosoft"  # attaché aux notebooks synchronisés\n',
+                             'LAKEHOUSE_PAR_DEFAUT = "LakeHouseZ"  # si le notebook n\'a pas de Lakehouse attaché\n',
                      tags=["parameters"]),
-            _cellule("code", code.lstrip()),
+            _cellule("code", 'import requests\n'
+                             'exec(requests.get(f"https://raw.githubusercontent.com/{DEPOT}/{BRANCHE}/fabric/synchro_github.py", timeout=30).text)\n'),
         ],
     }
-
 
 if __name__ == "__main__":
     SORTIE.mkdir(parents=True, exist_ok=True)

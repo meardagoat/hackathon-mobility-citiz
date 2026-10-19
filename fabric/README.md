@@ -12,10 +12,11 @@ Le détail des tables produites est dans [docs/DONNEES.md](../docs/DONNEES.md).
 
 ## Mise en place (une seule fois)
 
-Espace de travail : **Microsoft x Citiz x Epitech**, Lakehouse **`LakeHouseMicrosoft`** (schémas activés : tables dans `dbo`).
+Espace de travail : **HackathonZ**, Lakehouse **`LakeHouseZ`** (schémas activés : tables dans `dbo`).
+L'espace « Microsoft x Citiz x Epitech » n'est plus utilisé : sa capacité était saturée et la création de notebooks y était bloquée.
 
 1. **Importer → Notebook → Depuis cet ordinateur**, puis sélectionner les 3 fichiers `.ipynb` de `fabric/notebooks/`.
-2. Dans chaque notebook, panneau **Explorer → Add data items → From OneLake catalog** → `LakeHouseMicrosoft` (il devient le Lakehouse par défaut).
+2. Dans chaque notebook, panneau **Explorer → Add data items → From OneLake catalog** → `LakeHouseZ` (il devient le Lakehouse par défaut).
 
 Les notebooks sont des **notebooks Python** (2 vCores, sans Spark) : ils démarrent en quelques secondes et consomment peu de capacité, ce qui compte car la capacité d'essai est partagée (erreur `TooManyRequestsForCapacity` quand elle est saturée : attendre quelques minutes et relancer).
 
@@ -29,7 +30,7 @@ Ouvrir chaque notebook, ajuster si besoin la cellule de paramètres, puis **Exé
 ## Résultat dans le Lakehouse
 
 ```
-LakeHouseMicrosoft
+LakeHouseZ
 ├── Files/raw/
 │   ├── insee/   fichier ZIP INSEE d'origine
 │   ├── gbfs/    réponses JSON brutes de chaque flux GBFS
@@ -44,7 +45,7 @@ Les tables sont accessibles depuis n'importe quel notebook de l'espace de travai
 import duckdb  # notebook Python
 df = duckdb.sql("SELECT * FROM delta_scan('/lakehouse/default/Tables/dbo/gbfs_stations') WHERE est_citiz").df()
 
-df = spark.read.table("LakeHouseMicrosoft.dbo.gbfs_stations")  # notebook PySpark
+df = spark.read.table("LakeHouseZ.dbo.gbfs_stations")  # notebook PySpark
 ```
 
 ou en SQL via le point de terminaison SQL du Lakehouse :
@@ -59,7 +60,9 @@ L'intégration Git native de Fabric n'accepte pas GitHub sur notre tenant (seul 
 
 1. Fusionner les modifications dans la branche voulue (par défaut `main`).
 2. Dans Fabric, ouvrir `00_synchro_github`, ajuster si besoin `BRANCHE`, puis **Exécuter tout**.
-3. Les notebooks listés dans `fabric/notebooks/manifest.json` sont mis à jour (ou créés) et rattachés au Lakehouse `LakeHouseMicrosoft`.
+3. Les notebooks listés dans `fabric/notebooks/manifest.json` sont mis à jour (ou créés) et rattachés au Lakehouse attaché à `00_synchro_github` (`LakeHouseZ`).
+
+`00_synchro_github` ne contient que ses paramètres et l'appel au script `fabric/synchro_github.py` sur GitHub : il exécute toujours la dernière version du script, mais ne se met jamais à jour lui-même (Fabric interdit à un notebook de réécrire sa propre définition). Pour le recréer : **New item → Notebook** nommé `00_synchro_github`, attacher le Lakehouse, coller ses deux cellules depuis `fabric/notebooks/00_synchro_github.ipynb`.
 
 Les notebooks qui ne sont pas dans le dépôt (ex. créés par un coéquipier directement dans Fabric) ne sont jamais touchés. En revanche, une modification faite dans Fabric sur un notebook synchronisé est **écrasée** à la synchronisation suivante : il faut modifier le code dans le dépôt. Si un notebook synchronisé est ouvert pendant la synchronisation, Fabric affiche « Another user has saved changes » : cliquer sur **View changes** puis **Keep this version** côté *Saved version*.
 
@@ -68,7 +71,7 @@ Les notebooks qui ne sont pas dans le dépôt (ex. créés par un coéquipier di
 La même synchronisation se lance depuis une cellule de **n'importe quel notebook existant**. Ajouter son nom à `EXCLURE` pour qu'il ne s'écrase pas lui-même, puis supprimer la cellule après usage :
 
 ```python
-DEPOT, BRANCHE, DOSSIER, LAKEHOUSE_PAR_DEFAUT = "meardagoat/hackathon-mobility-citiz", "main", "fabric/notebooks", "LakeHouseMicrosoft"
+DEPOT, BRANCHE, DOSSIER, LAKEHOUSE_PAR_DEFAUT = "meardagoat/hackathon-mobility-citiz", "main", "fabric/notebooks", "LakeHouseZ"
 EXCLURE = "00_synchro_github,NOM_DU_NOTEBOOK_HOTE"
 import requests; exec(requests.get(f"https://raw.githubusercontent.com/{DEPOT}/{BRANCHE}/fabric/synchro_github.py").text)
 ```

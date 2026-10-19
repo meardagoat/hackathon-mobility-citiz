@@ -7,7 +7,8 @@ faite directement dans Fabric sur un notebook synchronisé est écrasée au proc
 lancement : modifier le code dans le dépôt, puis relancer la synchronisation.
 
 Les notebooks absents du dossier du dépôt (ex. créés par un coéquipier dans Fabric)
-ne sont jamais touchés.
+ne sont jamais touchés. Le notebook qui lance la synchronisation doit figurer dans EXCLURE :
+Fabric interdit à un notebook de réécrire sa propre définition.
 """
 import requests
 import notebookutils

@@ -38,7 +38,7 @@ pip install -r requirements.txt
 
 ## Données
 
-Les données brutes sont chargées dans le Lakehouse Fabric `LakeHouseMicrosoft` : voir [fabric/README.md](fabric/README.md) et le dictionnaire des tables [docs/DONNEES.md](docs/DONNEES.md).
+Les données brutes sont chargées dans le Lakehouse Fabric `LakeHouseZ` (espace HackathonZ) : voir [fabric/README.md](fabric/README.md) et le dictionnaire des tables [docs/DONNEES.md](docs/DONNEES.md).
 
 Pour les récupérer en local (sortie dans `data/raw/tables/*.parquet`) :
 

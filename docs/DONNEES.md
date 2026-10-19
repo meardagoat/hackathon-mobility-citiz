@@ -1,6 +1,6 @@
 # Dictionnaire des données brutes
 
-Tables Delta du Lakehouse Fabric `LakeHouseMicrosoft` (copies Parquet dans `Files/raw/tables/`, ou `data/raw/tables/` en local).
+Tables Delta du Lakehouse Fabric `LakeHouseZ` de l'espace HackathonZ (copies Parquet dans `Files/raw/tables/`, ou `data/raw/tables/` en local).
 Sources et licences : [DATA_SOURCES.md](../DATA_SOURCES.md). Chargement : [fabric/README.md](../fabric/README.md).
 
 Conventions communes à toutes les tables :
