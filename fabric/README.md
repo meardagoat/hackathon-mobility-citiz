@@ -58,7 +58,7 @@ SELECT systeme_nom, COUNT(*) AS stations FROM gbfs_stations WHERE est_citiz = 1 
 
 L'intégration Git native de Fabric n'accepte pas GitHub sur notre tenant (seul Azure DevOps est proposé). Le notebook **`00_synchro_github`** la remplace, dans un seul sens : **le dépôt fait foi**.
 
-1. Fusionner les modifications dans la branche voulue (par défaut `main`).
+1. Fusionner les modifications dans la branche voulue (par défaut `dev`, la branche d'intégration de l'équipe).
 2. Dans Fabric, ouvrir `00_synchro_github`, ajuster si besoin `BRANCHE`, puis **Exécuter tout**.
 3. Les notebooks listés dans `fabric/notebooks/manifest.json` sont mis à jour (ou créés) et rattachés au Lakehouse attaché à `00_synchro_github` (`LakeHouseZ`).
 
@@ -71,7 +71,7 @@ Les notebooks qui ne sont pas dans le dépôt (ex. créés par un coéquipier di
 La même synchronisation se lance depuis une cellule de **n'importe quel notebook existant**. Ajouter son nom à `EXCLURE` pour qu'il ne s'écrase pas lui-même, puis supprimer la cellule après usage :
 
 ```python
-DEPOT, BRANCHE, DOSSIER, LAKEHOUSE_PAR_DEFAUT = "meardagoat/hackathon-mobility-citiz", "main", "fabric/notebooks", "LakeHouseZ"
+DEPOT, BRANCHE, DOSSIER, LAKEHOUSE_PAR_DEFAUT = "meardagoat/hackathon-mobility-citiz", "dev", "fabric/notebooks", "LakeHouseZ"
 EXCLURE = "00_synchro_github,NOM_DU_NOTEBOOK_HOTE"
 import requests; exec(requests.get(f"https://raw.githubusercontent.com/{DEPOT}/{BRANCHE}/fabric/synchro_github.py").text)
 ```

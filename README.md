@@ -50,7 +50,7 @@ python -m src.ingestion.gtfs   # zone Bordeaux par défaut
 
 ## Conventions d'équipe
 
-- Une branche par personne / par tâche (`data/gtfs`, `access/isochrones`, `model/v1`…), merge sur `main` via pull request.
+- Une branche par personne / par tâche (`data/gtfs`, `access/isochrones`, `model/v1`…), pull request vers `dev` (branche d'intégration), puis `dev` vers `main` pour les versions stables.
 - On ne commit jamais de données : on commit le script qui les télécharge.
 - Toute nouvelle source de données est ajoutée immédiatement dans `DATA_SOURCES.md`.
 - Les fichiers échangés entre modules sont en GeoParquet dans `data/processed/`, en projection Lambert 93 (EPSG:2154) pour les calculs de distance, WGS84 (EPSG:4326) pour l'affichage.
