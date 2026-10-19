@@ -60,7 +60,7 @@ L'intégration Git native de Fabric n'accepte pas GitHub sur notre tenant (seul 
 
 1. Fusionner les modifications dans la branche voulue (par défaut `dev`, la branche d'intégration de l'équipe).
 2. Dans Fabric, ouvrir `00_synchro_github`, ajuster si besoin `BRANCHE`, puis **Exécuter tout**.
-3. Les notebooks listés dans `fabric/notebooks/manifest.json` sont mis à jour (ou créés) et rattachés au Lakehouse attaché à `00_synchro_github` (`LakeHouseZ`).
+3. Les notebooks présents dans `fabric/notebooks/` (listés dans `manifest.json`, régénéré par `python fabric/build_notebooks.py`) sont mis à jour (ou créés) et rattachés au Lakehouse attaché à `00_synchro_github` (`LakeHouseZ`).
 
 `00_synchro_github` ne contient que ses paramètres et l'appel au script `fabric/synchro_github.py` sur GitHub : il exécute toujours la dernière version du script, mais ne se met jamais à jour lui-même (Fabric interdit à un notebook de réécrire sa propre définition). Pour le recréer : **New item → Notebook** nommé `00_synchro_github`, attacher le Lakehouse, coller ses deux cellules depuis `fabric/notebooks/00_synchro_github.ipynb`.
 

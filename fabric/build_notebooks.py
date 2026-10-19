@@ -166,5 +166,6 @@ if __name__ == "__main__":
         chemin.write_text(json.dumps(contenu, ensure_ascii=False, indent=1))
         print(f"généré : {chemin.relative_to(RACINE)}")
     # Liste des notebooks lue par 00_synchro_github pour savoir quoi déployer dans Fabric
-    manifeste = {"notebooks": sorted(fichier.removesuffix(".ipynb") for fichier, _ in sorties)}
+    # (tous les .ipynb du dossier : générés ici ou déposés par l'équipe)
+    manifeste = {"notebooks": sorted(p.stem for p in SORTIE.glob("*.ipynb"))}
     (SORTIE / "manifest.json").write_text(json.dumps(manifeste, ensure_ascii=False, indent=1) + "\n")
