@@ -133,9 +133,33 @@ def construire(nb: dict) -> dict:
     }
 
 
+def construire_sync() -> dict:
+    """Notebook 00_sync_github : met à jour les notebooks Fabric depuis une branche GitHub."""
+    code = (RACINE / "fabric" / "sync_github.py").read_text()
+    _, doc, code = code.split('"""', 2)
+    return {
+        **construire(NOTEBOOKS[0]),
+        "cells": [
+            _cellule("markdown", "# Synchronisation GitHub → Fabric\n\n" + doc.strip() + "\n\n"
+                     "*Notebook généré depuis `fabric/sync_github.py` par `fabric/build_notebooks.py`.*"),
+            _cellule("code", 'DEPOT = "meardagoat/hackathon-mobility-citiz"\n'
+                             'BRANCHE = "main"  # branche à déployer dans Fabric\n'
+                             'DOSSIER = "fabric/notebooks"\n'
+                             'EXCLURE = "00_sync_github"  # notebooks à ne pas écraser, séparés par des virgules\n'
+                             'LAKEHOUSE_PAR_DEFAUT = "LakeHouseMicrosoft"  # attaché aux notebooks synchronisés\n',
+                     tags=["parameters"]),
+            _cellule("code", code.lstrip()),
+        ],
+    }
+
+
 if __name__ == "__main__":
     SORTIE.mkdir(parents=True, exist_ok=True)
-    for nb in NOTEBOOKS:
-        chemin = SORTIE / nb["fichier"]
-        chemin.write_text(json.dumps(construire(nb), ensure_ascii=False, indent=1))
+    sorties = [(nb["fichier"], construire(nb)) for nb in NOTEBOOKS] + [("00_sync_github.ipynb", construire_sync())]
+    for fichier, contenu in sorties:
+        chemin = SORTIE / fichier
+        chemin.write_text(json.dumps(contenu, ensure_ascii=False, indent=1))
         print(f"généré : {chemin.relative_to(RACINE)}")
+    # Liste des notebooks lue par 00_sync_github pour savoir quoi déployer dans Fabric
+    manifeste = {"notebooks": sorted(fichier.removesuffix(".ipynb") for fichier, _ in sorties)}
+    (SORTIE / "manifest.json").write_text(json.dumps(manifeste, ensure_ascii=False, indent=1) + "\n")
