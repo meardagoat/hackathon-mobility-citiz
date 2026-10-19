@@ -118,3 +118,16 @@ def test_areas():
     assert not in_area(["33243"], Area.bordeaux_metropole)
     assert in_area(["33243"], Area.gironde)
     assert not in_area(["24322"], Area.gironde)
+
+
+def test_missing_modes_are_counted():
+    unknown = Counter()
+    assert gtfs_modes([], unknown) == (StationType.other,)
+    assert gbfs_modes([], is_citiz=False, unknown=unknown) == (StationType.other,)
+    assert unknown == Counter({"gtfs stop without route_types": 1, "gbfs station without form_factors": 1})
+
+
+def test_citiz_without_form_factors_is_not_missing():
+    unknown = Counter()
+    assert gbfs_modes([], is_citiz=True, unknown=unknown) == (StationType.citiz,)
+    assert not unknown
