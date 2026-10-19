@@ -83,6 +83,8 @@ def _types_homogenes(df: pd.DataFrame) -> pd.DataFrame:
         types = {type(v) for v in df[col].dropna()}
         if len(types) > 1 or types - {str}:
             df[col] = df[col].map(lambda v: None if v is None or v != v else str(v))
+        if not types:  # colonne entièrement vide : type "null" refusé par Delta, on la type en texte
+            df[col] = df[col].astype("string")
     return df
 
 
