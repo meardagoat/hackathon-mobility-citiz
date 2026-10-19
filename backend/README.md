@@ -88,6 +88,8 @@ Présent dans toutes les réponses (sauf `/health`) :
 Paramètres : `area`, `bbox`, `limit` (1–5000, défaut 5000), `coverage_level` (répétable).
 Les carreaux sont triés par population décroissante puis par `zone_id`. Au-delà de `limit`, la réponse est tronquée et `meta.truncated` vaut `true` : le front doit inviter à zoomer.
 
+Tant que les seuils de couverture ne sont pas configurés, `coverage_level` vaut `null` partout : un filtre `coverage_level` renvoie alors **aucun carreau**.
+
 ```json
 {
   "type": "FeatureCollection",
@@ -199,6 +201,8 @@ Paramètres : `area`, `bbox`.
 
 `stations_by_type` compte chaque station une fois, par son type principal. Les champs de couverture restent `null` sans analyse d'accessibilité.
 
+En mode mock, `stations_per_100k_inhabitants` (19,71 dans l'exemple) est calculé sur une population factice : ce n'est **pas** un résultat du projet et ne doit pas être présenté comme tel.
+
 ### GET `/api/v1/statistics/population`
 
 Paramètres : `area`, `bbox`, `group_by` : `coverage_level` (défaut), `commune`, `station_type`.
@@ -243,6 +247,8 @@ Paramètres : `area`, `bbox`, `group_by` : `coverage_level` (défaut), `commune`
 
 Format d'une recommandation : `{rank, location_id, equipment_type, lat, lon, cost, population_gained, estimated_value}`.
 Sans fichier de candidats, la liste est vide (`recommendations_available: false`). Avec des candidats, l'API applique une **sélection gloutonne** par `estimated_value / cost` dans la limite du budget, sur les valeurs fournies par l'équipe data. Ce n'est pas un modèle prédictif : elle sera remplacée par la fonction `recommander(budget, types)` du rôle C.
+
+Limite connue : cette sélection ne tient pas compte des populations qui se chevauchent. Deux emplacements proches peuvent desservir les mêmes habitants, qui sont alors comptés deux fois dans `total_population_gained`.
 
 ## Types de station
 
@@ -308,6 +314,15 @@ En mode `real`, l'API lit trois fichiers dans `DATA_DIR`, préparés en amont (F
 **`candidates.parquet`** (optionnel) : `location_id`, `equipment_type`, `lon`, `lat`, `cost`, `population_gained`, `estimated_value`.
 
 Les stations et candidats sont rattachés à une zone d'étude par l'emprise de ses carreaux (approximation, en attendant un code commune par station).
+
+Validation au chargement (toute erreur empêche le démarrage, avec le fichier, la ligne et la colonne concernés) :
+- une colonne obligatoire absente ou contenant `null` ;
+- un `zone_id` qui n'est pas un identifiant INSEE de carreau de 200 m ;
+- `is_estimated` ou `is_citiz` qui ne sont pas des booléens ;
+- des lignes `gtfs` sans colonne `route_types`, ou des lignes `gbfs` sans colonnes `form_factors` et `is_citiz` (`is_citiz` doit être renseigné sur chaque station GBFS, pour ne jamais classer une station Citiz en `carsharing`) ;
+- une valeur invalide (`source`, `equipment_type`, nombre illisible).
+
+Une station sans `route_types` / `form_factors`, ou avec un type inconnu, est conservée en `other` : un seul avertissement est journalisé, avec le décompte par cas et quelques identifiants d'exemple.
 
 ## Décisions en attente
 
