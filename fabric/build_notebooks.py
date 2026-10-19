@@ -148,7 +148,7 @@ def construire_sync() -> dict:
                      "Ce notebook exécute la dernière version de `fabric/synchro_github.py` sur la branche choisie. "
                      "Il ne se met jamais à jour lui-même (Fabric l'interdit) : il est exclu de la synchronisation."),
             _cellule("code", 'DEPOT = "meardagoat/hackathon-mobility-citiz"\n'
-                             'BRANCHE = "main"  # branche à déployer dans Fabric\n'
+                             'BRANCHE = "dev"  # branche à déployer dans Fabric (dev = intégration)\n'
                              'DOSSIER = "fabric/notebooks"\n'
                              'EXCLURE = "00_synchro_github"  # notebooks à ne pas écraser, séparés par des virgules\n'
                              'LAKEHOUSE_PAR_DEFAUT = "LakeHouseZ"  # si le notebook n\'a pas de Lakehouse attaché\n',
