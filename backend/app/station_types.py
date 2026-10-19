@@ -92,11 +92,17 @@ def sort_modes(modes: Iterable[StationType]) -> tuple[StationType, ...]:
 
 
 def gtfs_modes(route_types: Iterable[str | int], unknown: Counter | None = None) -> tuple[StationType, ...]:
-    return sort_modes(gtfs_route_type(code, unknown) for code in route_types)
+    codes = list(route_types)
+    if not codes and unknown is not None:
+        unknown["gtfs stop without route_types"] += 1
+    return sort_modes(gtfs_route_type(code, unknown) for code in codes)
 
 
 def gbfs_modes(form_factors: Iterable[str], is_citiz: bool, unknown: Counter | None = None) -> tuple[StationType, ...]:
-    modes = {gbfs_form_factor(f, is_citiz, unknown) for f in form_factors}
+    factors = list(form_factors)
+    if not factors and not is_citiz and unknown is not None:
+        unknown["gbfs station without form_factors"] += 1
+    modes = {gbfs_form_factor(f, is_citiz, unknown) for f in factors}
     if is_citiz:
         modes = (modes - {StationType.other}) | {StationType.citiz}
     return sort_modes(modes)
