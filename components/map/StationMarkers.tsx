@@ -2,7 +2,6 @@
 import React from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import { divIcon } from 'leaflet';
-import { renderToString } from 'react-dom/server';
 import { TRANSPORT_COLORS, TRANSPORT_ICONS } from '@/lib/constants';
 import { StationPopup } from './StationPopup';
 import type { Station, TransportType } from '@/types/api';
