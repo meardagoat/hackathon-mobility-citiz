@@ -16,7 +16,8 @@ Le sujet officiel est dans [docs/sujet_hackathon_mobility.pdf](docs/sujet_hackat
 ```
 data/raw/          données brutes téléchargées (non versionnées)
 data/processed/    données nettoyées / jointes (non versionnées)
-src/ingestion/     scripts de téléchargement et nettoyage (GTFS, GBFS, INSEE, IGN, OSM)
+src/ingestion/     scripts de collecte des données brutes (INSEE, GBFS dont Citiz, GTFS)
+fabric/            notebooks Microsoft Fabric de chargement dans le Lakehouse (voir fabric/README.md)
 src/accessibility/ isochrones 5 min, score d'accessibilité, population desservie
 src/model/         modèle prédictif de valeur d'un emplacement
 src/optimization/  coûts + sélection des emplacements sous budget
@@ -33,6 +34,18 @@ DATA_SOURCES.md    liste des sources utilisées (livrable)
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+## Données
+
+Les données brutes sont chargées dans le Lakehouse Fabric `lh_mobilite` : voir [fabric/README.md](fabric/README.md) et le dictionnaire des tables [docs/DONNEES.md](docs/DONNEES.md).
+
+Pour les récupérer en local (sortie dans `data/raw/tables/*.parquet`) :
+
+```bash
+python -m src.ingestion.insee
+python -m src.ingestion.gbfs
+python -m src.ingestion.gtfs Strasbourg
 ```
 
 ## Conventions d'équipe
