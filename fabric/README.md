@@ -55,10 +55,10 @@ SELECT systeme_nom, COUNT(*) AS stations FROM gbfs_stations WHERE est_citiz = 1 
 
 ## Synchroniser Fabric avec GitHub
 
-L'intégration Git native de Fabric n'accepte pas GitHub sur notre tenant (seul Azure DevOps est proposé). Le notebook **`00_sync_github`** la remplace, dans un seul sens : **le dépôt fait foi**.
+L'intégration Git native de Fabric n'accepte pas GitHub sur notre tenant (seul Azure DevOps est proposé). Le notebook **`00_synchro_github`** la remplace, dans un seul sens : **le dépôt fait foi**.
 
 1. Fusionner les modifications dans la branche voulue (par défaut `main`).
-2. Dans Fabric, ouvrir `00_sync_github`, ajuster si besoin `BRANCHE`, puis **Exécuter tout**.
+2. Dans Fabric, ouvrir `00_synchro_github`, ajuster si besoin `BRANCHE`, puis **Exécuter tout**.
 3. Les notebooks listés dans `fabric/notebooks/manifest.json` sont mis à jour (ou créés) et rattachés au Lakehouse `LakeHouseMicrosoft`.
 
 Les notebooks qui ne sont pas dans le dépôt (ex. créés par un coéquipier directement dans Fabric) ne sont jamais touchés. En revanche, une modification faite dans Fabric sur un notebook synchronisé est **écrasée** à la synchronisation suivante : il faut modifier le code dans le dépôt. Si un notebook synchronisé est ouvert pendant la synchronisation, Fabric affiche « Another user has saved changes » : cliquer sur **View changes** puis **Keep this version** côté *Saved version*.
