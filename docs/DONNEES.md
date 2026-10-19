@@ -1,6 +1,6 @@
 # Dictionnaire des données brutes
 
-Tables Delta du Lakehouse Fabric `lh_mobilite` (copies Parquet dans `Files/raw/tables/`, ou `data/raw/tables/` en local).
+Tables Delta du Lakehouse Fabric `LakeHouseMicrosoft` (copies Parquet dans `Files/raw/tables/`, ou `data/raw/tables/` en local).
 Sources et licences : [DATA_SOURCES.md](../DATA_SOURCES.md). Chargement : [fabric/README.md](../fabric/README.md).
 
 Conventions communes à toutes les tables :
@@ -24,7 +24,7 @@ Une ligne par carreau habité de 200 m × 200 m (Filosofi 2021 : Métropole, Mar
 | `idcar_200m` | Identifiant INSEE du carreau (code la projection et le coin sud-ouest) |
 | `idcar_1km`, `idcar_nat` | Carreau de 1 km et carreau de regroupement utilisé pour le secret statistique |
 | `i_est_200`, `i_est_1km` | 1 si les valeurs du carreau sont imputées (carreau trop peu peuplé, secret statistique) |
-| `lcog_geo` | Code(s) commune(s) INSEE du carreau (ex. `67482` = Strasbourg) |
+| `lcog_geo` | Code(s) commune(s) INSEE du carreau (ex. `33063` = Bordeaux) |
 | `ind` | **Nombre d'habitants** |
 | `men` | Nombre de ménages |
 | `men_pauv` | Ménages pauvres |
@@ -87,16 +87,16 @@ Colonnes : `dataset_custom_title`, `dataset_organisation`, `dataset_id`, `resour
 Cette table ne contient pas le mode de transport : il s'obtient via les GTFS complets ci-dessous.
 
 ### GTFS complets de la zone d'étude
-Fichiers GTFS standards, concaténés pour tous les réseaux sélectionnés (paramètre `ZONE`, par défaut `Strasbourg` = réseau CTS). Toutes les colonnes d'origine sont conservées (texte), plus `ressource_id` et `jeu_titre`. Spécification : https://gtfs.org/schedule/reference/
+Fichiers GTFS standards, concaténés pour tous les réseaux sélectionnés (paramètre `ZONE`, par défaut Bordeaux Métropole + Gironde : TBM, cars régionaux de Gironde, bac, navette aéroport, Sud Gironde ; les agrégats régionaux sont exclus car ils dupliquent ces réseaux). Toutes les colonnes d'origine sont conservées (texte), plus `ressource_id` et `jeu_titre`. Spécification : https://gtfs.org/schedule/reference/
 
-| Table | Contenu | CTS Strasbourg |
+| Table | Contenu | Zone Bordeaux / Gironde |
 |---|---|---|
-| `gtfs_agency` | Exploitants | 1 |
-| `gtfs_routes` | Lignes ; `route_type` : 0 tram, 1 métro, 2 train, 3 bus… | 49 (6 tram, 43 bus) |
-| `gtfs_stops` | Arrêts du réseau (`stop_lat`, `stop_lon` numériques) | 1 350 |
-| `gtfs_trips` | Courses | 37 187 |
-| `gtfs_calendar`, `gtfs_calendar_dates` | Jours de circulation | 101 / 1 196 |
-| `gtfs_stop_times` | Horaires de passage à chaque arrêt | 805 588 |
+| `gtfs_agency` | Exploitants | 5 |
+| `gtfs_routes` | Lignes ; `route_type` : 0 tram, 1 métro, 2 train, 3 bus… | 309 (TBM : 6 tram, 193 bus, 3 bateaux ; Gironde : 93 cars, 2 bacs ; Sud Gironde : 11 bus ; navette : 1) |
+| `gtfs_stops` | Arrêts du réseau (`stop_lat`, `stop_lon` numériques) | 13 771 |
+| `gtfs_trips` | Courses | 78 475 |
+| `gtfs_calendar`, `gtfs_calendar_dates` | Jours de circulation | 344 / 8 120 |
+| `gtfs_stop_times` | Horaires de passage à chaque arrêt | 2 930 348 |
 
 Mode d'un arrêt : `gtfs_stop_times` → `gtfs_trips` (`trip_id`) → `gtfs_routes` (`route_id`) → `route_type`.
 Fréquence de passage : nombre de lignes de `gtfs_stop_times` par `stop_id` sur un jour type.

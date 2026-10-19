@@ -38,14 +38,14 @@ pip install -r requirements.txt
 
 ## Données
 
-Les données brutes sont chargées dans le Lakehouse Fabric `lh_mobilite` : voir [fabric/README.md](fabric/README.md) et le dictionnaire des tables [docs/DONNEES.md](docs/DONNEES.md).
+Les données brutes sont chargées dans le Lakehouse Fabric `LakeHouseMicrosoft` : voir [fabric/README.md](fabric/README.md) et le dictionnaire des tables [docs/DONNEES.md](docs/DONNEES.md).
 
 Pour les récupérer en local (sortie dans `data/raw/tables/*.parquet`) :
 
 ```bash
 python -m src.ingestion.insee
 python -m src.ingestion.gbfs
-python -m src.ingestion.gtfs Strasbourg
+python -m src.ingestion.gtfs   # zone Bordeaux par défaut
 ```
 
 ## Conventions d'équipe

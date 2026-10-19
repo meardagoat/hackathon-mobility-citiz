@@ -12,35 +12,39 @@ Le détail des tables produites est dans [docs/DONNEES.md](../docs/DONNEES.md).
 
 ## Mise en place (une seule fois)
 
-1. Dans Fabric, ouvrir l'espace de travail de l'équipe.
-2. **Nouveau → Lakehouse**, nommé `lh_mobilite`.
-3. **Importer → Notebook → Depuis cet ordinateur**, puis sélectionner les 3 fichiers `.ipynb` de `fabric/notebooks/`.
-4. Dans chaque notebook, panneau **Lakehouse** à gauche → **Ajouter** → `lh_mobilite`, défini comme Lakehouse par défaut.
+Espace de travail : **Microsoft x Citiz x Epitech**, Lakehouse **`LakeHouseMicrosoft`** (schémas activés : tables dans `dbo`).
+
+1. **Importer → Notebook → Depuis cet ordinateur**, puis sélectionner les 3 fichiers `.ipynb` de `fabric/notebooks/`.
+2. Dans chaque notebook, panneau **Explorer → Add data items → From OneLake catalog** → `LakeHouseMicrosoft` (il devient le Lakehouse par défaut).
+
+Les notebooks sont des **notebooks Python** (2 vCores, sans Spark) : ils démarrent en quelques secondes et consomment peu de capacité, ce qui compte car la capacité d'essai est partagée (erreur `TooManyRequestsForCapacity` quand elle est saturée : attendre quelques minutes et relancer).
 
 ## Exécution
 
 Ouvrir chaque notebook, ajuster si besoin la cellule de paramètres, puis **Exécuter tout**.
 
-- `03_collecte_gtfs` : le paramètre `ZONE` choisit les réseaux dont on charge les GTFS complets (mots-clés sur la ville, le réseau ou le code INSEE ; `["*"]` = toute la France, plusieurs Go).
+- `03_collecte_gtfs` : le paramètre `ZONE` choisit les réseaux dont on charge les GTFS complets (mots-clés sur la ville, le réseau ou le code INSEE ; `["*"]` = toute la France, plusieurs Go). Par défaut : Bordeaux Métropole et Gironde.
 - `02_collecte_gbfs` : chaque exécution **ajoute** une photo de l'état des stations et véhicules aux tables `gbfs_etat_stations` et `gbfs_vehicules`. Pour constituer un historique de disponibilité, planifier le notebook : **Exécuter → Planifier**, toutes les 30 minutes.
 
 ## Résultat dans le Lakehouse
 
 ```
-lh_mobilite
+LakeHouseMicrosoft
 ├── Files/raw/
 │   ├── insee/   fichier ZIP INSEE d'origine
 │   ├── gbfs/    réponses JSON brutes de chaque flux GBFS
 │   ├── gtfs/    agrégat national des arrêts (CSV) + ZIP GTFS de la zone
 │   └── tables/  copies Parquet des tables
-└── Tables/      tables Delta, interrogeables en SQL (point de terminaison SQL) et Power BI
+└── Tables/dbo/  tables Delta, interrogeables en SQL (point de terminaison SQL) et Power BI
 ```
 
 Les tables sont accessibles depuis n'importe quel notebook de l'espace de travail :
 
 ```python
-df = spark.read.table("lh_mobilite.gbfs_stations")          # Spark
-pdf = df.filter("est_citiz").toPandas()                      # pandas
+import duckdb  # notebook Python
+df = duckdb.sql("SELECT * FROM delta_scan('/lakehouse/default/Tables/dbo/gbfs_stations') WHERE est_citiz").df()
+
+df = spark.read.table("LakeHouseMicrosoft.dbo.gbfs_stations")  # notebook PySpark
 ```
 
 ou en SQL via le point de terminaison SQL du Lakehouse :

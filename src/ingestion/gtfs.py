@@ -23,6 +23,8 @@ import pandas as pd
 from .common import download, get_json, now_utc, pan_catalog, raw_dir, write_table
 
 ARRETS_FRANCE_DATASET = "https://www.data.gouv.fr/api/1/datasets/arrets-de-transport-en-france/"
+# Zone d'étude retenue : Bordeaux Métropole (TBM) + réseaux de Gironde pour le périurbain
+ZONE_BORDEAUX = ["Bordeaux Métropole", "Gironde", "Aéroport de Bordeaux"]
 FICHIERS_GTFS = ["agency", "routes", "stops", "trips", "calendar", "calendar_dates", "stop_times"]
 
 
@@ -74,12 +76,15 @@ def arrets_france(force: bool = False) -> pd.DataFrame:
     return df
 
 
-def selectionner(cat: pd.DataFrame, zone: list[str]) -> pd.DataFrame:
+def selectionner(cat: pd.DataFrame, zone: list[str], exclure_agregats: bool = True) -> pd.DataFrame:
     """Filtre le catalogue sur des mots-clés (nom de zone, de réseau, titre ou code INSEE).
-    zone = ["*"] sélectionne tous les GTFS de France."""
+    zone = ["*"] sélectionne tous les GTFS de France.
+    exclure_agregats : écarte les agrégats régionaux, qui dupliquent les réseaux locaux."""
     cat = cat[cat["disponible"].fillna(False)]
     if zone == ["*"]:
         return cat
+    if exclure_agregats:
+        cat = cat[~cat["jeu_titre"].str.lower().str.startswith("agrégat")]
     texte = (cat["jeu_titre"] + " " + cat["zones_couvertes"] + " " + cat["zones_insee"] + " "
              + cat["reseaux"] + " " + cat["producteur"].fillna("")).str.lower()
     masque = pd.Series(False, index=cat.index)
@@ -88,8 +93,9 @@ def selectionner(cat: pd.DataFrame, zone: list[str]) -> pd.DataFrame:
     return cat[masque]
 
 
-def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = True, force: bool = False) -> None:
-    choix = selectionner(cat, zone)
+def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = True, force: bool = False,
+                  exclure_agregats: bool = True) -> None:
+    choix = selectionner(cat, zone, exclure_agregats)
     print(f"  {len(choix)} GTFS sélectionnés pour la zone {zone}")
     fichiers = FICHIERS_GTFS if avec_stop_times else [f for f in FICHIERS_GTFS if f != "stop_times"]
     morceaux = {f: [] for f in fichiers}
@@ -118,13 +124,14 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
             write_table(df, f"gtfs_{f}")
 
 
-def collecter(zone: list[str], avec_stop_times: bool = True, force: bool = False) -> None:
+def collecter(zone: list[str], avec_stop_times: bool = True, force: bool = False,
+              exclure_agregats: bool = True) -> None:
     print("GTFS - transports en commun")
     cat = catalogue()
     arrets_france(force=force)
-    gtfs_complets(cat, zone, avec_stop_times=avec_stop_times, force=force)
+    gtfs_complets(cat, zone, avec_stop_times=avec_stop_times, force=force, exclure_agregats=exclure_agregats)
 
 
 if __name__ == "__main__":
     import sys
-    collecter(zone=sys.argv[1:] or ["Strasbourg"])
+    collecter(zone=sys.argv[1:] or ZONE_BORDEAUX)

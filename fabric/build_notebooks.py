@@ -45,30 +45,42 @@ NOTEBOOKS = [
                        "puis les GTFS complets (lignes, courses, horaires) des réseaux de la zone d'étude.",
         "module": "gtfs",
         "pip": None,
-        "parametres": ('ZONE = ["Strasbourg"]  # mots-clés : ville, réseau, code INSEE... ["*"] = toute la France\n'
+        "parametres": ('# Zone d\'étude : Bordeaux Métropole (TBM) + réseaux de Gironde\n'
+                       'ZONE = ["Bordeaux Métropole", "Gironde", "Aéroport de Bordeaux"]  # ["*"] = toute la France\n'
+                       "EXCLURE_AGREGATS = True  # écarte les agrégats régionaux qui dupliquent les réseaux locaux\n"
                        "AVEC_STOP_TIMES = True  # horaires détaillés (volumineux)\n"
                        "FORCE = False"),
-        "appel": "collecter(zone=ZONE, avec_stop_times=AVEC_STOP_TIMES, force=FORCE)",
+        "appel": "collecter(zone=ZONE, avec_stop_times=AVEC_STOP_TIMES, force=FORCE, exclure_agregats=EXCLURE_AGREGATS)",
         "tables": ["gtfs_catalogue", "gtfs_arrets_france", "gtfs_agency", "gtfs_routes", "gtfs_stops",
                    "gtfs_trips", "gtfs_calendar", "gtfs_calendar_dates", "gtfs_stop_times"],
         "historiques": [],
     },
 ]
 
-CHARGEMENT_DELTA = '''# Chargement des fichiers Parquet (Files/raw/tables) en tables Delta du Lakehouse
-from notebookutils import mssparkutils
+CHARGEMENT_DELTA = '''# Chargement des fichiers Parquet (Files/raw/tables) en tables Delta du Lakehouse par défaut.
+# L'écriture passe par l'adresse OneLake (abfss) : le dossier monté /lakehouse/default/Tables
+# interrompt les envois de gros fichiers.
+from pathlib import Path
+import pyarrow.parquet as pq
+from deltalake import write_deltalake
 
-def charger(nom):
-    chemin = f"Files/raw/tables/{nom}.parquet"
-    if not mssparkutils.fs.exists(chemin):
-        print(f"{nom} : absent, ignoré")
-        return
-    df = spark.read.parquet(chemin)
-    df.write.mode("overwrite").option("overwriteSchema", "true").format("delta").saveAsTable(nom)
-    print(f"{nom} : {df.count():,} lignes")
+try:
+    import notebookutils
+    ctx = notebookutils.runtime.context
+    TABLES_DELTA = (f"abfss://{ctx['defaultLakehouseWorkspaceId']}@onelake.dfs.fabric.microsoft.com/"
+                    f"{ctx['defaultLakehouseId']}/Tables" + ("/dbo" if Path("/lakehouse/default/Tables/dbo").exists() else ""))
+    OPTIONS = {"bearer_token": notebookutils.credentials.getToken("storage"), "use_fabric_endpoint": "true"}
+except ImportError:  # hors Fabric : tables Delta locales, pour tester
+    TABLES_DELTA, OPTIONS = str(raw_dir() / "delta"), None
 
 for nom in TABLES:
-    charger(nom)
+    source = raw_dir() / "tables" / f"{nom}.parquet"
+    if not source.exists():
+        print(f"{nom} : absent, ignoré")
+        continue
+    write_deltalake(f"{TABLES_DELTA}/{nom}", pq.read_table(source), mode="overwrite",
+                    schema_mode="overwrite", storage_options=OPTIONS)
+    print(f"{nom} : table Delta créée")
 '''
 
 
@@ -110,10 +122,11 @@ def construire(nb: dict) -> dict:
     ]
     return {
         "cells": cellules,
-        "metadata": {
-            "kernel_info": {"name": "synapse_pyspark"},
-            "kernelspec": {"name": "synapse_pyspark", "display_name": "Synapse PySpark"},
+        "metadata": {  # notebook Python Fabric (sans Spark) : démarre vite et consomme peu de capacité
+            "kernel_info": {"name": "jupyter", "jupyter_kernel_name": "python3.12"},
+            "kernelspec": {"name": "jupyter", "display_name": "Jupyter"},
             "language_info": {"name": "python"},
+            "microsoft": {"language": "python", "language_group": "jupyter_python"},
         },
         "nbformat": 4,
         "nbformat_minor": 5,
