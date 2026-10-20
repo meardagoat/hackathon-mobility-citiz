@@ -51,7 +51,7 @@ NOTEBOOKS = [
                        "AVEC_STOP_TIMES = True  # horaires détaillés (volumineux)\n"
                        "FORCE = False"),
         "appel": "collecter(zone=ZONE, avec_stop_times=AVEC_STOP_TIMES, force=FORCE, exclure_agregats=EXCLURE_AGREGATS)",
-        "tables": ["gtfs_catalogue", "gtfs_arrets_france", "gtfs_agency", "gtfs_routes", "gtfs_stops",
+        "tables": ["gtfs_catalogue", "gtfs_arrets_france", "gtfs_ressources", "gtfs_agency", "gtfs_routes", "gtfs_stops",
                    "gtfs_trips", "gtfs_calendar", "gtfs_calendar_dates", "gtfs_stop_times"],
         "historiques": [],
     },

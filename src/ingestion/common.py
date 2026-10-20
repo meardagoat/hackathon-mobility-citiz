@@ -9,6 +9,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import requests
 
@@ -76,22 +77,33 @@ def save_json(obj, dest: Path) -> None:
     dest.write_text(json.dumps(obj, ensure_ascii=False))
 
 
+def _manquant(v) -> bool:
+    """Valeur manquante (None, NaN, pd.NA), sans échouer sur les listes ou dictionnaires des flux JSON."""
+    return v is None or v is pd.NA or (isinstance(v, float) and v != v)
+
+
 def _types_homogenes(df: pd.DataFrame) -> pd.DataFrame:
     """Les flux open data mélangent parfois nombres et textes dans une même colonne :
-    on convertit ces colonnes en texte pour que Parquet / Delta les acceptent."""
+    on convertit ces colonnes en texte pour que Parquet / Delta les acceptent.
+    Les colonnes booléennes avec des valeurs manquantes restent booléennes (type nullable)."""
     for col in df.columns[df.dtypes == object]:
-        types = {type(v) for v in df[col].dropna()}
-        if len(types) > 1 or types - {str}:
-            df[col] = df[col].map(lambda v: None if v is None or v != v else str(v))
+        valeurs = df[col].dropna()
+        types = {type(v) for v in valeurs}
         if not types:  # colonne entièrement vide : type "null" refusé par Delta, on la type en texte
             df[col] = df[col].astype("string")
+        elif types & {bool, np.bool_} and types <= {bool, np.bool_, str} and valeurs.map(
+                lambda v: str(v) in ("True", "False")).all():
+            # booléens avec des trous (ou déjà écrits en texte "True"/"False" dans l'historique)
+            df[col] = df[col].map(lambda v: None if _manquant(v) else str(v) == "True").astype("boolean")
+        elif len(types) > 1 or types - {str}:
+            df[col] = df[col].map(lambda v: None if _manquant(v) else str(v))
     return df
 
 
 def write_table(df: pd.DataFrame, name: str, append: bool = False) -> Path:
     """Écrit une table Parquet dans <raw>/tables/<name>.parquet (ou ajoute à l'existante)."""
     path = tables_dir() / f"{name}.parquet"
-    df = _types_homogenes(df)
+    df = _types_homogenes(df.copy())  # ne modifie pas le DataFrame de l'appelant
     if append and path.exists():
         df = _types_homogenes(pd.concat([pd.read_parquet(path), df], ignore_index=True))
     df.to_parquet(path, index=False)
