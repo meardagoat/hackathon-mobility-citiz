@@ -13,7 +13,7 @@ import type { StationType } from '@/types/api';
 
 const MapComponent = dynamic(
   () => import('@/components/map/Map').then((m) => m.Map),
-  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-white/5"><Spinner label="Chargement de la carte..." /></div> }
+  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-ink/[0.04]"><Spinner label="Chargement de la carte..." /></div> }
 );
 
 export default function MapPage() {
@@ -43,10 +43,10 @@ export default function MapPage() {
         />
       </div>
 
-      <div className="w-72 bg-night-2 border-l border-white/10 flex flex-col overflow-y-auto">
-        <div className="px-5 py-4 border-b border-white/10">
+      <div className="w-72 bg-paper border-l border-ink/10 flex flex-col overflow-y-auto">
+        <div className="px-5 py-4 border-b border-ink/10">
           <div className="flex items-center gap-2">
-            <Layers size={16} className="text-volt" />
+            <Layers size={16} className="text-teal-ink" />
             <h2 className="text-sm font-semibold text-ink">Filtres et couches</h2>
           </div>
           {meta && <div className="mt-2"><DataModeNotice meta={meta} /></div>}
@@ -70,14 +70,14 @@ export default function MapPage() {
             <button
               type="button"
               onClick={() => setShowHeatmap(!showHeatmap)}
-              className="flex items-center gap-2 w-full p-3 rounded-lg border border-white/10 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2 w-full p-3 rounded-lg border border-ink/10 hover:bg-ink/[0.04] transition-colors"
             >
-              {showHeatmap ? <Eye size={14} className="text-volt" /> : <EyeOff size={14} className="text-ink-dim/70" />}
+              {showHeatmap ? <Eye size={14} className="text-teal-ink" /> : <EyeOff size={14} className="text-ink-soft" />}
               <span className="text-sm text-ink">Population par carreau</span>
             </button>
           </div>
 
-          <div className="border-t border-white/10 pt-4">
+          <div className="border-t border-ink/10 pt-4">
             <p className="text-xs font-semibold text-ink-dim uppercase tracking-wider mb-3">Statistiques</p>
             {stations.loading ? (
               <Spinner size="sm" />

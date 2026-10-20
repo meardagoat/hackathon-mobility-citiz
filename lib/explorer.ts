@@ -122,17 +122,18 @@ export function carreauxAllumes(reco: Recommendation, carreaux: Carreau[], voisi
 }
 
 export const COULEUR_STATION: Partial<Record<StationType, string>> = {
-  citiz: '#b28cff',
-  tram: '#3de0ff',
-  bike: '#ffb547',
-  bus: '#5b8cff',
-  ferry: '#7ef0d0',
+  citiz: '#32b4b5',
+  tram: '#5560c9',
+  bike: '#f2a33a',
+  bus: '#9aa5a5',
+  ferry: '#2b8cbe',
 };
 
+// Ce que le scénario ajoute : vert Citiz pour l'autopartage
 export const COULEUR_EQUIPEMENT: Record<EquipmentType, string> = {
-  citiz_station: '#d4ff3a',
-  bus_stop: '#5b8cff',
-  bike_station: '#ffb547',
+  citiz_station: '#2fac66',
+  bus_stop: '#5d6767',
+  bike_station: '#f2a33a',
 };
 
 export const LIBELLE_EQUIPEMENT: Record<EquipmentType, string> = {

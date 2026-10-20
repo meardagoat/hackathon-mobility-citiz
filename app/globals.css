@@ -2,25 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Direction artistique « carte de nuit » :
-   fond nuit, quartiers desservis en lumière froide, zones blanches en braise,
-   recommandations en vert électrique. */
+/* Direction artistique calée sur Citiz : blanc, turquoise #32B4B5, anthracite #202020,
+   tracés au trait, boutons pilule. Vert Citiz pour ce que le scénario ajoute, corail pour les zones blanches. */
 :root {
-  --night: #06080d;
-  --night-2: #0b0f17;
-  --ink: #e8edf5;
-  --ink-dim: #8a94a6;
-  --line: rgba(255, 255, 255, 0.08);
-  --glass: rgba(14, 18, 28, 0.72);
-  --served: #3de0ff;
-  --citiz: #b28cff;
-  --ember: #ff5c7a;
-  --volt: #d4ff3a;
+  --paper: #ffffff;
+  --paper-2: #f5f8f8;
+  --ink: #202020;
+  --ink-dim: #5d6767;
+  --line: rgba(32, 32, 32, 0.08);
+  --teal: #32b4b5;
+  --teal-deep: #20a4b0;
+  --teal-ink: #11686c;
+  --teal-tint: #dbf4f4;
+  --leaf: #2fac66;
+  --coral: #ee6352;
 }
 
 html,
 body {
-  background: var(--night);
+  background: var(--paper);
   color: var(--ink);
 }
 
@@ -29,72 +29,84 @@ body {
 }
 
 ::selection {
-  background: var(--volt);
-  color: var(--night);
+  background: var(--teal);
+  color: #fff;
 }
 
 .glass {
-  background: var(--glass);
+  background: rgba(255, 255, 255, 0.86);
   border: 1px solid var(--line);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: 0 1px 2px rgba(32, 32, 32, 0.04), 0 12px 40px rgba(32, 32, 32, 0.1);
 }
 
 .label-mono {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-family: var(--font-fira-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-dim);
-}
-
-.text-glow {
-  text-shadow: 0 0 24px rgba(212, 255, 58, 0.45);
 }
 
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(32, 32, 32, 0.15);
   border-radius: 999px;
 }
 
 /* Entrées animées */
 @keyframes rise {
-  from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
 }
 .rise { animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.1, 1) both; }
 
-@keyframes beacon {
-  0% { transform: scale(0.6); opacity: 0.9; }
-  100% { transform: scale(2.6); opacity: 0; }
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade { animation: fade 0.6s ease both; }
+
+/* Trait dessiné (façon illustrations Citiz) */
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+.draw {
+  stroke-dasharray: var(--len, 1200);
+  stroke-dashoffset: var(--len, 1200);
+  animation: draw 2.2s cubic-bezier(0.65, 0, 0.35, 1) forwards;
 }
 
-/* Leaflet (pages Carte et Recommandations) */
+@keyframes drive {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+
+/* Leaflet (pages Offre et Classement) */
 .leaflet-pane { z-index: 400; }
 .leaflet-top, .leaflet-bottom { z-index: 800; }
 .leaflet-control { z-index: 900; }
 .leaflet-popup { z-index: 1000; }
-.leaflet-container { background: var(--night-2); }
-/* Fond OpenStreetMap assombri pour la carte de nuit */
-.leaflet-tile-pane { filter: invert(1) hue-rotate(195deg) brightness(0.62) contrast(1.15) saturate(0.35); }
+.leaflet-container { background: var(--paper-2); font-family: var(--font-fira), sans-serif; }
+/* Fond OpenStreetMap adouci, dans les tons Citiz */
+.leaflet-tile-pane { filter: grayscale(0.85) contrast(0.92) brightness(1.04); }
 
-/* MapLibre : attribution et popups dans la DA */
+/* MapLibre */
 .maplibregl-ctrl-attrib {
-  background: rgba(6, 8, 13, 0.6) !important;
+  background: rgba(255, 255, 255, 0.7) !important;
   color: var(--ink-dim) !important;
   font-size: 10px;
 }
 .maplibregl-ctrl-attrib a { color: var(--ink-dim) !important; }
 .maplibregl-popup-content {
-  background: var(--glass) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 14px !important;
-  backdrop-filter: blur(16px);
+  border-radius: 16px !important;
   padding: 12px 14px !important;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 12px 40px rgba(32, 32, 32, 0.16) !important;
 }
 .maplibregl-popup-tip { display: none; }

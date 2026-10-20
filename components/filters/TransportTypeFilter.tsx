@@ -27,7 +27,7 @@ export function TransportTypeFilter({ types, selected, onChange, label = 'Types 
               type="button"
               onClick={() => toggle(type)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
-              style={active ? { backgroundColor: STATION_COLORS[type], borderColor: STATION_COLORS[type], color: '#06080d' } : { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.1)', color: '#8a94a6' }}
+              style={active ? { backgroundColor: STATION_COLORS[type], borderColor: STATION_COLORS[type], color: '#ffffff' } : { backgroundColor: 'rgba(32,32,32,0.03)', borderColor: 'rgba(32,32,32,0.08)', color: '#5d6767' }}
             >
               <span>{STATION_ICONS[type]}</span>
               {STATION_LABELS[type]}

@@ -19,8 +19,8 @@ export function Select({ label, options, placeholder, error, className, ...props
       {label && <label className="text-sm font-medium text-ink">{label}</label>}
       <select
         className={cn(
-          'px-3 py-2 rounded-lg border text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt/40 focus:border-transparent bg-night-2 transition-colors',
-          error ? 'border-red-400' : 'border-white/15 hover:border-white/20',
+          'px-3 py-2 rounded-lg border text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-transparent bg-paper transition-colors',
+          error ? 'border-red-400' : 'border-ink/15 hover:border-ink/20',
           className
         )}
         {...props}

@@ -21,15 +21,15 @@ export function StationsPieChart({ byType }: StationsPieChartProps) {
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
-          <p className="py-8 text-center text-sm text-ink-dim/70">Aucune station dans la zone.</p>
+          <p className="py-8 text-center text-sm text-ink-soft">Aucune station dans la zone.</p>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
-              <Pie stroke="#06080d" strokeWidth={2} data={data} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+              <Pie stroke="#ffffff" strokeWidth={2} data={data} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
                 {data.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
               </Pie>
-              <Tooltip formatter={(v: number) => [v.toLocaleString('fr-FR'), 'Stations']} contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: '#0b0f17', color: '#e8edf5', fontSize: '12px' }} itemStyle={{ color: '#e8edf5' }} />
-              <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 11, color: '#8a94a6' }}>{v}</span>} />
+              <Tooltip formatter={(v: number) => [v.toLocaleString('fr-FR'), 'Stations']} contentStyle={{ borderRadius: '12px', border: '1px solid rgba(32,32,32,0.08)', background: '#ffffff', color: '#202020', fontSize: '12px' }} itemStyle={{ color: '#202020' }} />
+              <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 11, color: '#5d6767' }}>{v}</span>} />
             </PieChart>
           </ResponsiveContainer>
         )}

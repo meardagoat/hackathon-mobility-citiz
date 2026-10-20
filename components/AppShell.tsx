@@ -29,22 +29,18 @@ function useApiStatus(): ApiStatus {
 }
 
 const STATUS: Record<ApiStatus, { dot: string; label: string }> = {
-  checking: { dot: 'bg-ink-dim', label: 'Connexion…' },
-  up: { dot: 'bg-volt shadow-[0_0_10px_#d4ff3a]', label: 'Données en direct' },
-  down: { dot: 'bg-ember', label: 'API injoignable' },
+  checking: { dot: 'bg-ink-soft', label: 'Connexion…' },
+  up: { dot: 'bg-teal', label: 'Données en direct' },
+  down: { dot: 'bg-coral', label: 'API injoignable' },
 };
 
 export function Brand({ className }: { className?: string }) {
   return (
-    <Link href="/" className={cn('group flex items-center gap-3', className)}>
-      <span className="relative flex h-8 w-8 items-center justify-center">
-        <span className="absolute inset-0 rounded-full border border-volt/40" />
-        <span className="absolute inset-[7px] rounded-full bg-volt shadow-[0_0_18px_#d4ff3a]" />
+    <Link href="/" className={cn('group flex items-baseline gap-3', className)}>
+      <span className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+        proxima<span className="text-teal">.</span>
       </span>
-      <span className="leading-tight">
-        <span className="block font-display text-[15px] font-semibold tracking-tight text-ink">Proxima</span>
-        <span className="block label-mono !text-[9px]">Hackathon Mobilité · 2026</span>
-      </span>
+      <span className="label-mono hidden !text-[9.5px] sm:inline">Hackathon Mobilité · 2026</span>
     </Link>
   );
 }
@@ -54,10 +50,10 @@ function TopBar() {
   const status = STATUS[useApiStatus()];
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-[1100] flex items-start justify-between gap-4 p-4 sm:p-5">
-      <div className="glass pointer-events-auto rounded-2xl px-4 py-2.5">
+      <div className="glass pointer-events-auto rounded-full px-5 py-2.5">
         <Brand />
       </div>
-      <nav className="glass pointer-events-auto flex items-center gap-1 rounded-2xl p-1.5">
+      <nav className="glass pointer-events-auto flex items-center gap-1 rounded-full p-1.5">
         {navItems.map((item) => {
           const active = pathname === item.href;
           return (
@@ -65,15 +61,15 @@ function TopBar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'rounded-xl px-3.5 py-2 text-sm font-medium transition-all',
-                active ? 'bg-volt text-night shadow-[0_0_24px_rgba(212,255,58,0.35)]' : 'text-ink-dim hover:bg-white/5 hover:text-ink',
+                'rounded-full px-4 py-2 text-sm font-semibold transition-all',
+                active ? 'bg-teal text-white' : 'text-ink-dim hover:bg-ink/[0.04] hover:text-ink',
               )}
             >
               {item.label}
             </Link>
           );
         })}
-        <span className="mx-1 hidden h-5 w-px bg-white/10 md:block" />
+        <span className="mx-1 hidden h-5 w-px bg-ink/10 md:block" />
         <span className="hidden items-center gap-2 px-2 md:flex" title={API_BASE_URL}>
           <span className={cn('h-2 w-2 rounded-full', status.dot)} />
           <span className="label-mono">{status.label}</span>

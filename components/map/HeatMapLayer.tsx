@@ -5,11 +5,11 @@ import { formatNumber } from '@/lib/utils';
 import type { HeatmapResponse } from '@/types/api';
 
 export function intensityColor(ratio: number): string {
-  if (ratio >= 0.8) return '#c9f6ff';
-  if (ratio >= 0.6) return '#3de0ff';
-  if (ratio >= 0.4) return '#1fa3c9';
-  if (ratio >= 0.2) return '#13698a';
-  return '#0d3447';
+  if (ratio >= 0.8) return '#11686c';
+  if (ratio >= 0.6) return '#20a4b0';
+  if (ratio >= 0.4) return '#4fc0c1';
+  if (ratio >= 0.2) return '#9ddedf';
+  return '#dbf4f4';
 }
 
 export function HeatMapLayer({ data }: { data: HeatmapResponse }) {

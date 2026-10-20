@@ -20,7 +20,7 @@ export function RecommendationCard({ recommendation: rec, onViewOnMap }: Recomme
         <div className="flex-1 p-4">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-7 h-6 rounded-full bg-white/5 text-xs font-bold text-ink-dim">#{rec.rank}</span>
+              <span className="flex items-center justify-center w-7 h-6 rounded-full bg-ink/[0.04] text-xs font-bold text-ink-dim">#{rec.rank}</span>
               <Badge style={{ backgroundColor: `${color}20`, color }} className="border-0">
                 {EQUIPMENT_LABELS[rec.equipment_type]}
               </Badge>
@@ -33,22 +33,22 @@ export function RecommendationCard({ recommendation: rec, onViewOnMap }: Recomme
           </div>
 
           <div className="flex items-center gap-1.5 mb-3">
-            <MapPin size={13} className="text-ink-dim/70 flex-shrink-0" />
+            <MapPin size={13} className="text-ink-soft flex-shrink-0" />
             <p className="text-sm text-ink">Commune INSEE {rec.commune_code}</p>
           </div>
 
           <dl className="grid grid-cols-3 gap-3 mb-3 text-center">
             <div>
               <dd className="text-xs font-semibold text-ink">{formatCurrency(rec.cost)}</dd>
-              <dt className="text-[10px] text-ink-dim/70">Coût sur 3 ans</dt>
+              <dt className="text-[10px] text-ink-soft">Coût sur 3 ans</dt>
             </div>
             <div>
               <dd className="text-xs font-semibold text-ink">{formatNumber(rec.population_gained)}</dd>
-              <dt className="text-[10px] text-ink-dim/70">Nouveaux habitants</dt>
+              <dt className="text-[10px] text-ink-soft">Nouveaux habitants</dt>
             </div>
             <div>
               <dd className="text-xs font-semibold text-ink">{formatCurrency(rec.cumulative_cost)}</dd>
-              <dt className="text-[10px] text-ink-dim/70">Cumul</dt>
+              <dt className="text-[10px] text-ink-soft">Cumul</dt>
             </div>
           </dl>
 
@@ -62,7 +62,7 @@ export function RecommendationCard({ recommendation: rec, onViewOnMap }: Recomme
             <button
               type="button"
               onClick={() => onViewOnMap(rec)}
-              className="w-full text-xs py-1.5 rounded-lg border border-white/10 text-ink-dim hover:bg-white/5 hover:border-white/20 transition-colors flex items-center justify-center gap-1.5"
+              className="w-full text-xs py-1.5 rounded-lg border border-ink/10 text-ink-dim hover:bg-ink/[0.04] hover:border-ink/20 transition-colors flex items-center justify-center gap-1.5"
             >
               <MapPin size={11} /> Voir sur la carte
             </button>
