@@ -36,7 +36,8 @@ Le sujet officiel est dans [docs/sujet_hackathon_mobility.pdf](docs/sujet_hackat
 | Abdoul Kane | Collecte des données (INSEE, GBFS, GTFS) |
 | Catrielle Michelle Kotti | Accessibilité, modèle et recommandations |
 | Danlyn Bayan Medou | Backend et API |
-| Mariane Aurore Njimegne Kouosseu | Microsoft Fabric, intégration, rapport Power BI, démonstration |
+| Komlan | Frontend (interface de démonstration) |
+| Mariane Aurore Njimegne Kouosseu | Microsoft Fabric, intégration, rapport Power BI |
 
 ## Architecture
 
@@ -114,13 +115,14 @@ Interface de démonstration (`app/`) : à compléter.
 data/raw/          données brutes téléchargées (non versionnées)
 data/processed/    données nettoyées / jointes (non versionnées)
 src/ingestion/     scripts de collecte des données brutes (INSEE, GBFS dont Citiz, GTFS)
-fabric/            notebooks Microsoft Fabric de chargement dans le Lakehouse (voir fabric/README.md)
-backend/           API FastAPI (voir backend/README.md)
-src/accessibility/ isochrones 5 min, score d'accessibilité, population desservie
-src/model/         modèle prédictif de valeur d'un emplacement
-src/optimization/  coûts + sélection des emplacements sous budget
+fabric/            notebooks Microsoft Fabric : collecte, accessibilité (04), score et classement (05) (voir fabric/README.md)
+backend/           API FastAPI et ses tests (voir backend/README.md)
+tests/             tests des scripts de collecte
+src/accessibility/ réservé (le calcul est dans fabric/notebooks/04_accessibilite)
+src/model/         réservé (le modèle est dans fabric/notebooks/05_score_classement)
+src/optimization/  réservé (le classement est dans fabric/notebooks/05_score_classement)
 app/               application de démo (carte interactive)
-notebooks/         exploration, évaluation du modèle
+notebooks/         exploration
 slides/            présentation de la soutenance
 docs/              sujet, documentation technique
 DATA_SOURCES.md    liste des sources utilisées (livrable)
@@ -151,4 +153,4 @@ python -m src.ingestion.gtfs   # zone Bordeaux par défaut
 - Une branche par personne / par tâche (`data/gtfs`, `access/isochrones`, `model/v1`…), pull request vers `dev` (branche d'intégration), puis `dev` vers `main` pour les versions stables.
 - On ne commit jamais de données : on commit le script qui les télécharge.
 - Toute nouvelle source de données est ajoutée immédiatement dans `DATA_SOURCES.md`.
-- Les fichiers échangés entre modules sont en GeoParquet dans `data/processed/`, en projection Lambert 93 (EPSG:2154) pour les calculs de distance, WGS84 (EPSG:4326) pour l'affichage.
+- Les fichiers échangés entre modules sont en Parquet dans `Files/gold/` du Lakehouse (copie locale dans `data/processed/`). Coordonnées : WGS84 (EPSG:4326) pour l'affichage, mètres en EPSG:3035 pour les calculs de distance. Voir [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md).
