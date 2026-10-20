@@ -18,7 +18,7 @@ export function GeoJSONLayer({ data, onFeatureClick }: GeoJSONLayerProps) {
       fillColor: level ? COVERAGE_LEVEL_COLORS[level] : '#2a3346',
       weight: 1,
       opacity: 0.6,
-      color: '#06080d',
+      color: '#ffffff',
       fillOpacity: 0.4,
     };
   };

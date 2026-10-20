@@ -43,7 +43,7 @@ export function BudgetForm({ onSubmit, loading = false }: BudgetFormProps) {
               value={key}
               checked={perimeter === key}
               onChange={() => setPerimeter(key)}
-              className="accent-[#d4ff3a]"
+              className="accent-[#32b4b5]"
             />
             {PERIMETERS[key].label}
           </label>

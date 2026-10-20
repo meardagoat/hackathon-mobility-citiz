@@ -51,28 +51,28 @@ export default function DashboardPage() {
           value={formatNumber(s.population_total)}
           subtitle={`${formatNumber(s.zones_count)} carreaux, dont ${formatNumber(s.masked_zones_count)} masqués (non comptés)`}
           icon={<Users size={20} />}
-          color="#3b82f6"
+          color="#32b4b5"
         />
         <StatCard
           title="Arrêts et stations"
           value={formatNumber(s.stations_count)}
           subtitle="offre existante"
           icon={<MapPin size={20} />}
-          color="#8b5cf6"
+          color="#5560c9"
         />
         <StatCard
           title="Option à 400 m"
           value={formatPercent(s.population_with_any_option_share)}
           subtitle={`${formatNumber(s.population_with_any_option)} habitants`}
           icon={<Footprints size={20} />}
-          color="#22c55e"
+          color="#2fac66"
         />
         <StatCard
           title="Citiz à 400 m"
           value={formatPercent(s.citiz.population_within_5min_share)}
           subtitle={`${formatNumber(s.citiz.stations_count)} stations Citiz`}
           icon={<Car size={20} />}
-          color="#f59e0b"
+          color="#20a4b0"
         />
       </div>
 
@@ -101,7 +101,7 @@ export default function DashboardPage() {
             data={[...communes.data.groups]
               .sort((a, b) => b.population - a.population)
               .slice(0, 10)
-              .map((g) => ({ label: communeName(g.key).replace('Saint-', 'St-'), population: g.population, color: '#3de0ff' }))}
+              .map((g) => ({ label: communeName(g.key).replace('Saint-', 'St-'), population: g.population, color: '#32b4b5' }))}
             footnote="Population INSEE 2021, carreaux masqués exclus."
           />
         ) : (

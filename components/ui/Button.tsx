@@ -12,11 +12,11 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  primary: 'bg-volt hover:bg-primary-300 text-night font-semibold shadow-[0_0_24px_rgba(212,255,58,0.25)]',
-  secondary: 'bg-white/5 hover:bg-white/10 text-ink',
-  outline: 'border border-white/15 hover:bg-white/5 text-ink',
-  ghost: 'hover:bg-white/10 text-ink-dim',
-  danger: 'bg-ember hover:bg-ember/80 text-night shadow-none',
+  primary: 'bg-teal hover:bg-primary-300 text-white font-semibold',
+  secondary: 'bg-ink/[0.04] hover:bg-ink/10 text-ink',
+  outline: 'border border-ink/15 hover:bg-ink/[0.04] text-ink',
+  ghost: 'hover:bg-ink/10 text-ink-dim',
+  danger: 'bg-coral hover:bg-coral/80 text-white shadow-none',
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -30,7 +30,7 @@ export function Button({ variant = 'primary', size = 'md', loading = false, disa
     <button
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-volt/40 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal/40 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
         variantClasses[variant],
         sizeClasses[size],
         className

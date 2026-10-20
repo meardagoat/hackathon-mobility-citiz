@@ -44,7 +44,7 @@ export function Map({
       </MapContainer>
 
       {showLegend && (
-        <div className="absolute bottom-6 left-4 z-[1000] bg-night-2 rounded-xl p-3 shadow-md border border-white/10">
+        <div className="absolute bottom-6 left-4 z-[1000] bg-paper rounded-xl p-3 shadow-md border border-ink/10">
           <p className="text-xs font-semibold text-ink mb-2">Habitants par carreau de 200 m</p>
           {[0.8, 0.6, 0.4, 0.2, 0].map((ratio) => (
             <div key={ratio} className="flex items-center gap-2 mb-1">
@@ -55,7 +55,7 @@ export function Map({
             </div>
           ))}
           {heatmap.masked_zones_count > 0 && (
-            <p className="mt-1 text-[10px] text-ink-dim/70">{heatmap.masked_zones_count} carreaux masqués non affichés</p>
+            <p className="mt-1 text-[10px] text-ink-soft">{heatmap.masked_zones_count} carreaux masqués non affichés</p>
           )}
         </div>
       )}

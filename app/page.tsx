@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import { carreauxAllumes, chargerCarreaux, chargerStations, indexer, type Carreau, type CarreauxGeoJSON } from '@/lib/explorer';
@@ -8,10 +8,10 @@ import type { Perimeter, Recommendation, RecommendationResponse, StationType, St
 import { BudgetDock } from '@/components/explorer/BudgetDock';
 import { RecoList } from '@/components/explorer/RecoList';
 import { LayerPanel } from '@/components/explorer/LayerPanel';
-import { Intro } from '@/components/explorer/Intro';
-import type { Mode } from '@/components/explorer/NightMap';
+import { Onboarding } from '@/components/explorer/Onboarding';
+import type { Mode } from '@/components/explorer/CityMap';
 
-const NightMap = dynamic(() => import('@/components/explorer/NightMap'), { ssr: false });
+const CityMap = dynamic(() => import('@/components/explorer/CityMap'), { ssr: false });
 
 const PAS_ANIMATION_MS = 110;
 
@@ -32,6 +32,8 @@ export default function ExplorerPage() {
   const [survol, setSurvol] = useState<number | null>(null);
   const [focus, setFocus] = useState<Recommendation | null>(null);
   const cache = useRef(new Map<string, RecommendationResponse>());
+  const [scenarioIntro, setScenarioIntro] = useState<RecommendationResponse | null>(null);
+  const terminerIntro = useCallback(() => setIntro(false), []);
 
   // Données de base
   useEffect(() => {
@@ -62,6 +64,7 @@ export default function ExplorerPage() {
       .recommendations({ budget, equipment_types: PERIMETERS[perimetre].equipment_types, max_results: 100 })
       .then((r) => {
         cache.current.set(cle, r);
+        if (cle === '1000000|citiz') setScenarioIntro(r);
         appliquer(r);
       })
       .catch((e: Error) => {
@@ -83,6 +86,26 @@ export default function ExplorerPage() {
     return () => clearTimeout(id);
   }, [intro, visibles, recos.length]);
 
+  useEffect(() => {
+    if (intro) return;
+    const touche = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return;
+      const budgets = [100_000, 250_000, 500_000, 1_000_000];
+      if (['1', '2', '3', '4'].includes(e.key)) {
+        setFocus(null);
+        setBudget(budgets[Number(e.key) - 1]);
+      }
+      if (e.key === 'c') setPerimetre('citiz');
+      if (e.key === 't') {
+        setPerimetre('tous');
+        setMode('acces');
+      }
+      if (e.key === 'r') setVisibles(0);
+    };
+    window.addEventListener('keydown', touche);
+    return () => window.removeEventListener('keydown', touche);
+  }, [intro]);
+
   const voisins = useMemo(() => (carreaux ? indexer(carreaux.liste) : null), [carreaux]);
   const allumesParReco = useMemo(
     () => (carreaux && voisins ? recos.map((r) => carreauxAllumes(r, carreaux.liste, voisins)) : []),
@@ -100,8 +123,8 @@ export default function ExplorerPage() {
     resume && resume.citiz.population_within_5min !== null ? (resume.citiz.population_within_5min + gainCitiz) / resume.population_total : null;
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-night">
-      <NightMap
+    <div className="relative h-screen w-screen overflow-hidden bg-paper">
+      <CityMap
         carreaux={carreaux?.geojson ?? null}
         stations={stations}
         mode={mode}
@@ -113,11 +136,11 @@ export default function ExplorerPage() {
         orbite={intro}
       />
 
-      {/* Vignettage pour faire ressortir les panneaux */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(6,8,13,0.75)_100%)]" />
-
       {intro ? (
-        <Intro resume={resume} onEntrer={() => setIntro(false)} />
+        <Onboarding
+          donnees={{ resume, carreaux: carreaux?.liste.length ?? null, stations: stations?.features.length ?? null, scenario: scenarioIntro }}
+          onTerminer={terminerIntro}
+        />
       ) : (
         <>
           <div className="absolute left-4 top-24 z-[900] hidden sm:left-5 md:block">
@@ -154,7 +177,7 @@ export default function ExplorerPage() {
       )}
 
       {erreur && (
-        <div className="glass absolute left-1/2 top-24 z-[1200] -translate-x-1/2 rounded-2xl border-ember/40 px-4 py-3 text-sm text-ember">
+        <div className="glass absolute left-1/2 top-24 z-[1200] -translate-x-1/2 rounded-2xl border-coral/40 px-4 py-3 text-sm text-coral">
           Données indisponibles : {erreur}
         </div>
       )}

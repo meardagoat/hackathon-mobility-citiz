@@ -25,12 +25,12 @@ export function PopulationChart({ title, data, footnote }: PopulationChartProps)
       <CardContent>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#8a94a6' }} />
-            <YAxis tickFormatter={(v: number) => v.toLocaleString('fr-FR')} tick={{ fontSize: 11, fill: '#8a94a6' }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(32,32,32,0.06)" />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#5d6767' }} />
+            <YAxis tickFormatter={(v: number) => v.toLocaleString('fr-FR')} tick={{ fontSize: 11, fill: '#5d6767' }} />
             <Tooltip
               formatter={(v: number) => [formatNumber(v), 'Habitants']}
-              contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: '#0b0f17', color: '#e8edf5', fontSize: '12px' }} itemStyle={{ color: '#e8edf5' }} cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+              contentStyle={{ borderRadius: '12px', border: '1px solid rgba(32,32,32,0.08)', background: '#ffffff', color: '#202020', fontSize: '12px' }} itemStyle={{ color: '#202020' }} cursor={{ fill: 'rgba(32,32,32,0.04)' }}
             />
             <Bar dataKey="population" radius={[4, 4, 0, 0]}>
               {data.map((entry) => (
@@ -39,7 +39,7 @@ export function PopulationChart({ title, data, footnote }: PopulationChartProps)
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-        {footnote && <p className="mt-2 text-xs text-ink-dim/70">{footnote}</p>}
+        {footnote && <p className="mt-2 text-xs text-ink-soft">{footnote}</p>}
       </CardContent>
     </Card>
   );

@@ -11,7 +11,7 @@ import type { Recommendation, RecommendationRequest, RecommendationResponse } fr
 
 const PointMap = dynamic(
   () => import('@/components/map/PointMap').then((m) => m.PointMap),
-  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-white/5"><Spinner /></div> }
+  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-ink/[0.04]"><Spinner /></div> }
 );
 
 export default function RecommendationsPage() {
@@ -35,10 +35,10 @@ export default function RecommendationsPage() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <div className="w-96 flex-shrink-0 bg-night-2 border-r border-white/10 flex flex-col">
-        <div className="px-6 py-5 border-b border-white/10">
+      <div className="w-96 flex-shrink-0 bg-paper border-r border-ink/10 flex flex-col">
+        <div className="px-6 py-5 border-b border-ink/10">
           <div className="flex items-center gap-2">
-            <Lightbulb size={18} className="text-volt" />
+            <Lightbulb size={18} className="text-teal-ink" />
             <h1 className="text-base font-semibold text-ink">Recommandations</h1>
           </div>
           <p className="text-xs text-ink-dim mt-1">Emplacements prioritaires sous contrainte de budget</p>
@@ -67,7 +67,7 @@ export default function RecommendationsPage() {
             <RecommendationsList recommendations={result.recommendations} onViewOnMap={setMapRec} />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-ink-dim/70">
+          <div className="flex-1 flex flex-col items-center justify-center text-ink-soft">
             <Lightbulb size={48} className="mb-4 text-gray-200" />
             <p className="text-base font-medium text-ink-dim">Choisissez un budget et un périmètre</p>
           </div>
@@ -78,7 +78,7 @@ export default function RecommendationsPage() {
         {mapRec && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <MapPin size={14} className="text-ink-dim/70" />
+              <MapPin size={14} className="text-ink-soft" />
               <p className="text-sm text-ink-dim">
                 #{mapRec.rank} {EQUIPMENT_LABELS[mapRec.equipment_type]}, commune INSEE {mapRec.commune_code}
               </p>
