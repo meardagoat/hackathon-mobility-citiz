@@ -1,95 +1,129 @@
+from collections import defaultdict
+
+from app.areas import Area
+from app.coverage_levels import CoverageLevel, classify, is_underserved
+from app.data.models import Dataset, Zone
+from app.geo import BBox, cell_centre, parent_cell, square_centre, square_polygon
 from app.schemas import (
-    BBox,
     CoverageProperties,
     CoverageResponse,
     Feature,
-    PointGeometry,
+    HeatmapMetric,
+    HeatmapResolution,
+    HeatmapResponse,
     PolygonGeometry,
-    StationProperties,
-    StationsResponse,
-    StationType,
+    ValueRange,
+)
+from app.services.selection import (
+    build_collection_meta,
+    masked_count,
+    select_zones,
+    total_population,
+    zone_population,
 )
 
-_CELL_LAT = 0.0018
-_CELL_LON = 0.0027
-_GRID_ORIGIN = (7.735, 48.575)
-_GRID_SIZE = 4
-
-_MOCK_STATIONS = [
-    ("cts-homme-de-fer", "Homme de Fer", StationType.tram, "CTS", 7.7455, 48.5833, 4200),
-    ("cts-republique", "République", StationType.tram, "CTS", 7.7530, 48.5878, 3100),
-    ("cts-bus-broglie", "Broglie", StationType.bus, "CTS", 7.7505, 48.5845, 2800),
-    ("cts-bus-gare", "Gare Centrale", StationType.bus, "CTS", 7.7350, 48.5845, 3600),
-    ("velhop-gare", "Vélhop Gare", StationType.bike, "Vélhop", 7.7365, 48.5838, 3400),
-    ("velhop-kleber", "Vélhop Kléber", StationType.bike, "Vélhop", 7.7460, 48.5835, 4000),
-    ("tier-krutenau", "Krutenau", StationType.scooter, "Tier", 7.7570, 48.5800, 2100),
-    ("citiz-gare", "Citiz Gare", StationType.citiz, "Citiz Grand Est", 7.7340, 48.5850, 3300),
-    ("citiz-esplanade", "Citiz Esplanade", StationType.citiz, "Citiz Grand Est", 7.7660, 48.5790, 2500),
-]
+MAX_COVERAGE_FEATURES = 5000
 
 
-def _cell_polygon(lon: float, lat: float) -> PolygonGeometry:
-    ring = [
-        (lon, lat),
-        (lon + _CELL_LON, lat),
-        (lon + _CELL_LON, lat + _CELL_LAT),
-        (lon, lat + _CELL_LAT),
-        (lon, lat),
-    ]
-    return PolygonGeometry(coordinates=[ring])
+def _options_per_1000(zone: Zone) -> float | None:
+    population = zone_population(zone)
+    if zone.options_count is None or not population:
+        return None
+    return round(1000 * zone.options_count / population, 2)
 
 
-def get_coverage(bbox: BBox | None = None) -> CoverageResponse:
-    features = []
-    for i in range(_GRID_SIZE):
-        for j in range(_GRID_SIZE):
-            lon = _GRID_ORIGIN[0] + i * _CELL_LON
-            lat = _GRID_ORIGIN[1] + j * _CELL_LAT
-            center_lon, center_lat = lon + _CELL_LON / 2, lat + _CELL_LAT / 2
-            if bbox and not bbox.contains(center_lon, center_lat):
-                continue
-
-            centrality = _GRID_SIZE - abs(i - 1.5) - abs(j - 1.5)
-            population = int(150 + 120 * centrality)
-            by_type = {
-                StationType.bus: int(centrality),
-                StationType.tram: int(centrality // 2),
-                StationType.bike: (i + j) % 3,
-                StationType.scooter: (i * j) % 2,
-                StationType.citiz: 1 if centrality > 2.5 else 0,
-            }
-            options = sum(by_type.values())
-            features.append(
-                Feature(
-                    geometry=_cell_polygon(lon, lat),
-                    properties=CoverageProperties(
-                        zone_id=f"CRS3035RES200mN{2_890_000 + j * 200}E{4_200_000 + i * 200}",
-                        population=population,
-                        options_count=options,
-                        options_by_type=by_type,
-                        options_per_1000_inhabitants=round(1000 * options / population, 2),
-                        accessibility_score=round(min(options / 10, 1.0), 2),
-                    ),
-                )
-            )
-    return CoverageResponse(features=features)
+def _feature(ds: Dataset, zone: Zone) -> Feature:
+    return Feature(
+        geometry=PolygonGeometry(coordinates=[list(square_polygon(zone.zone_id))]),
+        properties=CoverageProperties(
+            zone_id=zone.zone_id,
+            population=zone_population(zone),
+            is_estimated=zone.is_estimated,
+            commune_codes=list(zone.commune_codes),
+            options_count=zone.options_count,
+            options_by_type=zone.options_by_type,
+            options_per_1000_inhabitants=_options_per_1000(zone),
+            accessibility_score=zone.accessibility_score,
+            coverage_level=classify(zone.options_count, ds.coverage_thresholds),
+        ),
+    )
 
 
-def get_stations(
-    types: list[StationType] | None = None, bbox: BBox | None = None
-) -> StationsResponse:
-    features = [
-        Feature(
-            geometry=PointGeometry(coordinates=(lon, lat)),
-            properties=StationProperties(
-                station_id=station_id,
-                name=name,
-                type=station_type,
-                operator=operator,
-                population_served=population_served,
-            ),
-        )
-        for station_id, name, station_type, operator, lon, lat, population_served in _MOCK_STATIONS
-        if (not types or station_type in types) and (not bbox or bbox.contains(lon, lat))
-    ]
-    return StationsResponse(features=features)
+def get_coverage(
+    ds: Dataset,
+    area: Area,
+    bbox: BBox | None = None,
+    limit: int = MAX_COVERAGE_FEATURES,
+    levels: list[CoverageLevel] | None = None,
+) -> CoverageResponse:
+    zones = select_zones(ds, area, bbox)
+    if levels:
+        zones = [z for z in zones if classify(z.options_count, ds.coverage_thresholds) in levels]
+    zones.sort(key=lambda z: (z.is_estimated, -round(z.population) if not z.is_estimated else 0, z.zone_id))
+    returned = zones[:limit]
+    return CoverageResponse(
+        meta=build_collection_meta(ds, area, total=len(zones), returned=len(returned)),
+        features=[_feature(ds, z) for z in returned],
+    )
+
+
+def metric_available(ds: Dataset, zones: list[Zone], metric: HeatmapMetric) -> bool:
+    if metric is HeatmapMetric.population:
+        return True
+    if not ds.accessibility_available:
+        return False
+    if metric is HeatmapMetric.accessibility_score:
+        return all(z.accessibility_score is not None for z in zones or ds.zones)
+    return True
+
+
+def _aggregate(zones: list[Zone], metric: HeatmapMetric) -> float | None:
+    if metric is HeatmapMetric.population:
+        visible = [z for z in zones if not z.is_estimated]
+        return total_population(visible) if visible else None
+    if metric is HeatmapMetric.underserved_population:
+        visible = [z for z in zones if not z.is_estimated]
+        return total_population(z for z in visible if is_underserved(z.options_count)) if visible else None
+    scores = [z.accessibility_score for z in zones]
+    weights = [zone_population(z) or 0 for z in zones]
+    if sum(weights) == 0:
+        return round(sum(scores) / len(scores), 4)
+    return round(sum(w * s for w, s in zip(weights, scores)) / sum(weights), 4)
+
+
+def _groups(zones: list[Zone], resolution: HeatmapResolution) -> dict[tuple[float, float], list[Zone]]:
+    groups: dict[tuple[float, float], list[Zone]] = defaultdict(list)
+    for zone in zones:
+        if resolution is HeatmapResolution.km1:
+            centre = cell_centre(parent_cell(zone.zone_id, 1000))
+        else:
+            centre = square_centre(zone.zone_id)
+        groups[centre].append(zone)
+    return groups
+
+
+def get_heatmap(
+    ds: Dataset,
+    area: Area,
+    bbox: BBox | None = None,
+    metric: HeatmapMetric = HeatmapMetric.population,
+    resolution: HeatmapResolution = HeatmapResolution.m200,
+) -> HeatmapResponse:
+    zones = select_zones(ds, area, bbox)
+    available = metric_available(ds, zones, metric)
+    points = []
+    if available:
+        for (lon, lat), group in sorted(_groups(zones, resolution).items()):
+            value = _aggregate(group, metric)
+            if value is not None:
+                points.append((lon, lat, float(value)))
+    values = [p[2] for p in points]
+    return HeatmapResponse(
+        meta=build_collection_meta(ds, area, total=len(points), returned=len(points)),
+        metric=metric,
+        resolution=resolution,
+        metric_available=available,
+        masked_zones_count=masked_count(zones),
+        value_range=ValueRange(min=min(values), max=max(values)) if values else None,
+        points=points,
+    )

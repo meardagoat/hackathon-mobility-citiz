@@ -103,3 +103,13 @@ Filtre côté API : `perimetre = ? AND budget_scenario = ?`, trié par `rang`.
 - 5 min à pied = 400 m à vol d'oiseau, depuis le centre du carreau.
 - Réseau TBM uniquement (cars de Gironde exclus), lignes scolaires exclues.
 - GBFS : stations fixes Citiz et Le Vélo uniquement (pas de free-floating).
+
+## Utilisation par l'API
+
+Contrat de l'API (endpoints, champs, erreurs) : `backend/README.md`. Vérifié sur les échantillons du 2026-10-20 (`backend/fixtures/data_team/`, non versionnés), pas sur l'export complet.
+
+- Lus en Parquet : `carreaux`, `offre_existante`, `recommandations`, `meta` (`date_maj`, `rayon_m`). Les exports JSON, `candidats_scores` (pas d'export JSON), `impacts`, `couts`, `hypotheses` et `modele_eval` ne sont pas lus.
+- Carreaux `donnee_masquee` : le Parquet contient la population imputée. L'API ne renvoie ni `population` ni `options_par_habitant` de ces carreaux, et les exclut de tous les totaux.
+- `pop_desservie` et `pop_nouvelle` incluent les carreaux masqués : l'API les recalcule sans ces carreaux (même rayon, même règle de couverture que le notebook 05).
+- `pop_nouvelle` n'a pas de double compte entre les rangs d'un **même type**. Pour `perimetre = tous`, la somme sur plusieurs types (et donc `impacts.habitants_nouvellement_servis`) compte deux fois un habitant couvert par deux types.
+- `budget_scenario` servis : 100 000, 250 000, 500 000, 1 000 000. `cout_eur` est un coût sur `couts.annees` (3) ans.
