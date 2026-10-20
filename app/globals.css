@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-width: 240px;
+}
+
+body {
+  background-color: #f8f9fa;
+  color: #1f2937;
+}
+
+/* Fix leaflet z-index */
+.leaflet-pane { z-index: 400; }
+.leaflet-top, .leaflet-bottom { z-index: 800; }
+.leaflet-control { z-index: 900; }
+.leaflet-popup { z-index: 1000; }
