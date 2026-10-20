@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 
-from .common import get_json, now_utc, pan_catalog, raw_dir, save_json, write_table
+from .common import get_json, now_utc, pan_catalog, raw_dir, reprendre_precedent, save_json, write_table
 
 FLUX_UTILES = ["system_information", "station_information", "station_status",
                "vehicle_types", "free_bike_status", "vehicle_status"]
@@ -251,11 +251,14 @@ def collecter(seulement_citiz: bool = False, manifestes: bool = False, workers: 
         nb_vehicules=[len(r["vehicules"]) for r in resultats],
         date_collecte=horodatage,
     )
-    tables = {
-        "gbfs_flux": flux,
-        "gbfs_stations": pd.DataFrame([x for r in resultats for x in r["stations"]]),
-        "gbfs_types_vehicules": pd.DataFrame([x for r in resultats for x in r["types"]]),
-    }
+    # un flux en erreur garde ses stations et types de véhicules de la collecte précédente
+    # (pas de photo inventée pour les historiques : il n'y apparaît simplement pas)
+    echecs, repris = flux.loc[flux["statut"] != "ok", "ressource_id"].tolist(), set()
+    tables = {"gbfs_flux": flux}
+    for nom, cle in (("gbfs_stations", "stations"), ("gbfs_types_vehicules", "types")):
+        tables[nom], ids = reprendre_precedent(pd.DataFrame([x for r in resultats for x in r[cle]]), nom, echecs)
+        repris |= ids
+    flux["donnees_precedentes"] = flux["ressource_id"].astype(str).isin(repris)
     historiques = {
         "gbfs_etat_stations": _typer(pd.DataFrame([x for r in resultats for x in r["etats"]])),
         "gbfs_vehicules": _typer(pd.DataFrame([x for r in resultats for x in r["vehicules"]])),

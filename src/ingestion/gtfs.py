@@ -21,7 +21,7 @@ import zipfile
 
 import pandas as pd
 
-from .common import download, get_json, now_utc, pan_catalog, raw_dir, write_table
+from .common import download, get_json, now_utc, pan_catalog, raw_dir, reprendre_precedent, write_table
 
 ARRETS_FRANCE_DATASET = "https://www.data.gouv.fr/api/1/datasets/arrets-de-transport-en-france/"
 # Zone d'étude retenue : Bordeaux Métropole (TBM) + réseaux de Gironde pour le périurbain
@@ -106,6 +106,8 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
                   exclure_agregats: bool = True) -> None:
     choix = selectionner(cat, zone, exclure_agregats)
     print(f"  {len(choix)} GTFS sélectionnés pour la zone {zone}")
+    if choix.empty:  # sinon toutes les tables de la zone seraient supprimées au chargement
+        raise ValueError(f"Aucun GTFS ne correspond à la zone {zone} : vérifier le paramètre ZONE")
     fichiers = FICHIERS_GTFS if avec_stop_times else [f for f in FICHIERS_GTFS if f != "stop_times"]
     morceaux = {f: [] for f in fichiers}
     statuts = []
@@ -134,15 +136,21 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
                         "licence": r.get("licence"), "mise_a_jour": r.get("mise_a_jour"), "statut": statut, "fichiers": ",".join(lus),
                         "nb_arrets": len(lus["stops"]) if "stops" in lus else None})
     horodatage = now_utc()
-    colonnes = ["ressource_id", "jeu_titre", "url", "licence", "mise_a_jour", "statut", "fichiers", "nb_arrets"]
-    write_table(pd.DataFrame(statuts, columns=colonnes).assign(date_collecte=horodatage), "gtfs_ressources")
+    # un GTFS illisible garde ses données de la collecte précédente au lieu de disparaître des tables
+    echecs, repris = [st["ressource_id"] for st in statuts if st["statut"] != "ok"], set()
     for f, dfs in morceaux.items():
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True).assign(date_collecte=horodatage)
+        df = pd.concat(dfs, ignore_index=True).assign(date_collecte=horodatage) if dfs else pd.DataFrame()
+        df, ids = reprendre_precedent(df, f"gtfs_{f}", echecs)
+        repris |= ids
+        if len(df):
             for col in ("stop_lat", "stop_lon"):
                 if col in df:
                     df[col] = pd.to_numeric(df[col], errors="coerce")
             write_table(df, f"gtfs_{f}")
+    colonnes = ["ressource_id", "jeu_titre", "url", "licence", "mise_a_jour", "statut", "fichiers", "nb_arrets"]
+    ressources = pd.DataFrame(statuts, columns=colonnes)
+    ressources["donnees_precedentes"] = ressources["ressource_id"].isin(repris)
+    write_table(ressources.assign(date_collecte=horodatage), "gtfs_ressources")
 
 
 def collecter(zone: list[str], avec_stop_times: bool = True, force: bool = False,
