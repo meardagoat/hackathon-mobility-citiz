@@ -27,6 +27,8 @@ ARRETS_FRANCE_DATASET = "https://www.data.gouv.fr/api/1/datasets/arrets-de-trans
 # Zone d'étude retenue : Bordeaux Métropole (TBM) + réseaux de Gironde pour le périurbain
 ZONE_BORDEAUX = ["Bordeaux Métropole", "Gironde", "Aéroport de Bordeaux"]
 FICHIERS_GTFS = ["agency", "routes", "stops", "trips", "calendar", "calendar_dates", "stop_times"]
+# Sans ces fichiers, un réseau publierait des arrêts sans lignes ni courses : il est traité comme un échec.
+FICHIERS_REQUIS = ["routes", "stops", "trips", "stop_times"]
 
 
 def catalogue() -> pd.DataFrame:
@@ -114,6 +116,7 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
     if zone_complete.empty:  # sinon toutes les tables de la zone seraient supprimées au chargement
         raise ValueError(f"Aucun GTFS ne correspond à la zone {zone} : vérifier le paramètre ZONE")
     fichiers = FICHIERS_GTFS if avec_stop_times else [f for f in FICHIERS_GTFS if f != "stop_times"]
+    requis = [f for f in FICHIERS_REQUIS if f in fichiers]
     morceaux = {f: [] for f in fichiers}
     statuts = []
     for r in choix.to_dict("records"):
@@ -130,6 +133,9 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
                         df.insert(0, "ressource_id", str(r["ressource_id"]))
                         df.insert(1, "jeu_titre", r["jeu_titre"])
                         lus[f] = df
+            manquants = [f"{f}.txt" for f in requis if f not in lus]
+            if manquants:
+                raise ValueError(f"fichiers absents : {', '.join(manquants)}")
             statut = "ok"
         except Exception as e:
             print(f"  ! {r['jeu_titre']} ({r['ressource_id']}) ignoré : {e}")
