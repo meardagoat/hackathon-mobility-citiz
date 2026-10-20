@@ -43,14 +43,14 @@ export const COLORS = {
   textSecondary: '#6b7280',
 } as const;
 
-// Régions disponibles (Bordeaux Métropole par défaut pour le hackathon)
+// Région disponible pour le hackathon (Bordeaux Métropole uniquement)
+// Les autres régions peuvent être ajoutées facilement après le hackathon
 export const MOCK_REGIONS = [
-  { id: 'bordeaux-metropole', name: 'Bordeaux Métropole' }, // ⭐ Cas d'étude principal
-  { id: 'ile-de-france', name: 'Île-de-France' },
-  { id: 'auvergne-rhone-alpes', name: 'Auvergne-Rhône-Alpes' },
-  { id: 'provence-alpes-cote-azur', name: 'Provence-Alpes-Côte d\'Azur' },
-  { id: 'occitanie', name: 'Occitanie' },
-  { id: 'nouvelle-aquitaine', name: 'Nouvelle-Aquitaine' },
+  { id: 'bordeaux-metropole', name: 'Bordeaux Métropole' }, // ⭐ Cas d'étude hackathon
+  // Autres régions désactivées pour le hackathon (pas de données disponibles) :
+  // { id: 'ile-de-france', name: 'Île-de-France' },
+  // { id: 'toulouse-metropole', name: 'Toulouse Métropole' },
+  // { id: 'lyon-metropole', name: 'Lyon Métropole' },
 ];
 
 export const DEFAULT_COST_ESTIMATES: Partial<Record<TransportType, number>> = {
