@@ -2,17 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Direction artistique « carte de nuit » :
+   fond nuit, quartiers desservis en lumière froide, zones blanches en braise,
+   recommandations en vert électrique. */
 :root {
-  --sidebar-width: 240px;
+  --night: #06080d;
+  --night-2: #0b0f17;
+  --ink: #e8edf5;
+  --ink-dim: #8a94a6;
+  --line: rgba(255, 255, 255, 0.08);
+  --glass: rgba(14, 18, 28, 0.72);
+  --served: #3de0ff;
+  --citiz: #b28cff;
+  --ember: #ff5c7a;
+  --volt: #d4ff3a;
+}
+
+html,
+body {
+  background: var(--night);
+  color: var(--ink);
 }
 
 body {
-  background-color: #f8f9fa;
-  color: #1f2937;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Fix leaflet z-index */
+::selection {
+  background: var(--volt);
+  color: var(--night);
+}
+
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+.label-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.text-glow {
+  text-shadow: 0 0 24px rgba(212, 255, 58, 0.45);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+/* Entrées animées */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+.rise { animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.1, 1) both; }
+
+@keyframes beacon {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* Leaflet (pages Carte et Recommandations) */
 .leaflet-pane { z-index: 400; }
 .leaflet-top, .leaflet-bottom { z-index: 800; }
 .leaflet-control { z-index: 900; }
 .leaflet-popup { z-index: 1000; }
+.leaflet-container { background: var(--night-2); }
+/* Fond OpenStreetMap assombri pour la carte de nuit */
+.leaflet-tile-pane { filter: invert(1) hue-rotate(195deg) brightness(0.62) contrast(1.15) saturate(0.35); }
+
+/* MapLibre : attribution et popups dans la DA */
+.maplibregl-ctrl-attrib {
+  background: rgba(6, 8, 13, 0.6) !important;
+  color: var(--ink-dim) !important;
+  font-size: 10px;
+}
+.maplibregl-ctrl-attrib a { color: var(--ink-dim) !important; }
+.maplibregl-popup-content {
+  background: var(--glass) !important;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px !important;
+  backdrop-filter: blur(16px);
+  padding: 12px 14px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+.maplibregl-popup-tip { display: none; }

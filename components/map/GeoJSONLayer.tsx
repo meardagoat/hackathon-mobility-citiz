@@ -15,10 +15,10 @@ export function GeoJSONLayer({ data, onFeatureClick }: GeoJSONLayerProps) {
   const style = (feature?: GeoJSON.Feature): L.PathOptions => {
     const level = (feature?.properties as CoverageProperties | undefined)?.coverage_level;
     return {
-      fillColor: level ? COVERAGE_LEVEL_COLORS[level] : '#9ca3af',
+      fillColor: level ? COVERAGE_LEVEL_COLORS[level] : '#2a3346',
       weight: 1,
       opacity: 0.6,
-      color: '#ffffff',
+      color: '#06080d',
       fillOpacity: 0.4,
     };
   };

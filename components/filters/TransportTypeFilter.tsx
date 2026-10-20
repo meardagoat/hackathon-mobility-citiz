@@ -17,7 +17,7 @@ export function TransportTypeFilter({ types, selected, onChange, label = 'Types 
 
   return (
     <div className="flex flex-col gap-1.5">
-      {label && <label className="text-sm font-medium text-gray-700">{label}</label>}
+      {label && <label className="text-sm font-medium text-ink">{label}</label>}
       <div className="flex flex-wrap gap-2">
         {types.map((type) => {
           const active = selected.includes(type);
@@ -27,7 +27,7 @@ export function TransportTypeFilter({ types, selected, onChange, label = 'Types 
               type="button"
               onClick={() => toggle(type)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
-              style={active ? { backgroundColor: STATION_COLORS[type], borderColor: STATION_COLORS[type], color: '#fff' } : { backgroundColor: '#f9fafb', borderColor: '#e5e7eb', color: '#374151' }}
+              style={active ? { backgroundColor: STATION_COLORS[type], borderColor: STATION_COLORS[type], color: '#06080d' } : { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.1)', color: '#8a94a6' }}
             >
               <span>{STATION_ICONS[type]}</span>
               {STATION_LABELS[type]}

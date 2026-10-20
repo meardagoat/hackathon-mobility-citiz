@@ -13,7 +13,7 @@ interface PointMapProps {
 export function PointMap({ lat, lon, label, color }: PointMapProps) {
   return (
     <Map center={[lat, lon]} zoom={15} showHeatmap={false}>
-      <CircleMarker center={[lat, lon]} radius={10} pathOptions={{ color: '#ffffff', weight: 2, fillColor: color, fillOpacity: 0.9 }}>
+      <CircleMarker center={[lat, lon]} radius={10} pathOptions={{ color: '#06080d', weight: 2, fillColor: color, fillOpacity: 0.9 }}>
         <Tooltip permanent>{label}</Tooltip>
       </CircleMarker>
     </Map>

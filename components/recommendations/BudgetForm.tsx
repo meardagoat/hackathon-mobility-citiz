@@ -34,23 +34,23 @@ export function BudgetForm({ onSubmit, loading = false }: BudgetFormProps) {
       />
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium text-gray-700 mb-1">Équipements</legend>
+        <legend className="text-sm font-medium text-ink mb-1">Équipements</legend>
         {(Object.keys(PERIMETERS) as Perimeter[]).map((key) => (
-          <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
+          <label key={key} className="flex items-center gap-2 text-sm text-ink">
             <input
               type="radio"
               name="perimeter"
               value={key}
               checked={perimeter === key}
               onChange={() => setPerimeter(key)}
-              className="accent-blue-500"
+              className="accent-[#d4ff3a]"
             />
             {PERIMETERS[key].label}
           </label>
         ))}
       </fieldset>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-ink-dim">
         Zone : Bordeaux Métropole. Les classements sont précalculés par l’équipe data pour ces budgets et ces périmètres.
       </p>
 

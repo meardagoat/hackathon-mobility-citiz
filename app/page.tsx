@@ -1,102 +1,163 @@
 'use client';
-import React from 'react';
-import { Users, MapPin, Footprints, Car } from 'lucide-react';
-import { Spinner } from '@/components/ui';
-import { StatCard, PopulationChart, StationsPieChart } from '@/components/dashboard';
-import { DataModeNotice, EmptyState, ErrorState } from '@/components/DataStatus';
-import { useSummary, usePopulation } from '@/hooks/useStatistics';
-import { COVERAGE_LEVEL_COLORS, COVERAGE_LEVEL_LABELS, DEFAULT_AREA } from '@/lib/constants';
-import { formatNumber, formatPercent } from '@/lib/utils';
-import type { CoverageLevel } from '@/types/api';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { api } from '@/lib/api';
+import { carreauxAllumes, chargerCarreaux, chargerStations, indexer, type Carreau, type CarreauxGeoJSON } from '@/lib/explorer';
+import { PERIMETERS } from '@/lib/constants';
+import type { Perimeter, Recommendation, RecommendationResponse, StationType, StationsResponse, SummaryResponse } from '@/types/api';
+import { BudgetDock } from '@/components/explorer/BudgetDock';
+import { RecoList } from '@/components/explorer/RecoList';
+import { LayerPanel } from '@/components/explorer/LayerPanel';
+import { Intro } from '@/components/explorer/Intro';
+import type { Mode } from '@/components/explorer/NightMap';
 
-export default function DashboardPage() {
-  const summary = useSummary(DEFAULT_AREA);
-  const levels = usePopulation(DEFAULT_AREA, 'coverage_level');
+const NightMap = dynamic(() => import('@/components/explorer/NightMap'), { ssr: false });
 
-  if (summary.loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Spinner size="lg" label="Chargement des données..." />
-      </div>
-    );
-  }
+const PAS_ANIMATION_MS = 110;
 
-  if (summary.error || !summary.data) {
-    return (
-      <div className="p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Mobilité</h1>
-        <ErrorState message={`Statistiques indisponibles : ${summary.error ?? 'réponse vide'}`} />
-      </div>
-    );
-  }
+export default function ExplorerPage() {
+  const [intro, setIntro] = useState(true);
+  const [resume, setResume] = useState<SummaryResponse | null>(null);
+  const [carreaux, setCarreaux] = useState<{ liste: Carreau[]; geojson: CarreauxGeoJSON } | null>(null);
+  const [stations, setStations] = useState<StationsResponse | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
 
-  const s = summary.data;
+  const [mode, setMode] = useState<Mode>('citiz');
+  const [types, setTypes] = useState<StationType[]>(['citiz', 'tram', 'bike']);
+  const [budget, setBudget] = useState(1_000_000);
+  const [perimetre, setPerimetre] = useState<Perimeter>('citiz');
+  const [resultat, setResultat] = useState<RecommendationResponse | null>(null);
+  const [chargement, setChargement] = useState(false);
+  const [visibles, setVisibles] = useState(0);
+  const [survol, setSurvol] = useState<number | null>(null);
+  const [focus, setFocus] = useState<Recommendation | null>(null);
+  const cache = useRef(new Map<string, RecommendationResponse>());
+
+  // Données de base
+  useEffect(() => {
+    api.summary().then(setResume).catch((e: Error) => setErreur(e.message));
+    chargerCarreaux()
+      .then(({ carreaux: liste, geojson }) => setCarreaux({ liste, geojson }))
+      .catch((e: Error) => setErreur(e.message));
+    chargerStations().then(setStations).catch((e: Error) => setErreur(e.message));
+  }, []);
+
+  // Recommandations du scénario (précalculées par le notebook 05, servies par l'API)
+  useEffect(() => {
+    const cle = `${budget}|${perimetre}`;
+    let annule = false;
+    const appliquer = (r: RecommendationResponse) => {
+      if (annule) return;
+      setResultat(r);
+      setVisibles(0);
+      setChargement(false);
+    };
+    const enCache = cache.current.get(cle);
+    if (enCache) {
+      appliquer(enCache);
+      return;
+    }
+    setChargement(true);
+    api
+      .recommendations({ budget, equipment_types: PERIMETERS[perimetre].equipment_types, max_results: 100 })
+      .then((r) => {
+        cache.current.set(cle, r);
+        appliquer(r);
+      })
+      .catch((e: Error) => {
+        if (!annule) {
+          setErreur(e.message);
+          setChargement(false);
+        }
+      });
+    return () => {
+      annule = true;
+    };
+  }, [budget, perimetre]);
+
+  // Les balises s'allument une à une, dans l'ordre du classement
+  const recos = useMemo(() => resultat?.recommendations ?? [], [resultat]);
+  useEffect(() => {
+    if (intro || visibles >= recos.length) return;
+    const id = setTimeout(() => setVisibles((v) => v + 1), visibles === 0 ? 500 : PAS_ANIMATION_MS);
+    return () => clearTimeout(id);
+  }, [intro, visibles, recos.length]);
+
+  const voisins = useMemo(() => (carreaux ? indexer(carreaux.liste) : null), [carreaux]);
+  const allumesParReco = useMemo(
+    () => (carreaux && voisins ? recos.map((r) => carreauxAllumes(r, carreaux.liste, voisins)) : []),
+    [recos, carreaux, voisins],
+  );
+
+  const affichees = recos.slice(0, visibles);
+  const allumes = useMemo(() => Array.from(new Set(allumesParReco.slice(0, visibles).flat())), [allumesParReco, visibles]);
+  const habitants = affichees.reduce((s, r) => s + r.population_gained, 0);
+  const depense = affichees.length ? affichees[affichees.length - 1].cumulative_cost : 0;
+  const voitures = affichees.reduce((s, r) => s + (r.cars_avoided ?? 0), 0);
+  const gainCitiz = affichees.filter((r) => r.equipment_type === 'citiz_station').reduce((s, r) => s + r.population_gained, 0);
+  const citizAvant = resume?.citiz.population_within_5min_share ?? null;
+  const citizApres =
+    resume && resume.citiz.population_within_5min !== null ? (resume.citiz.population_within_5min + gainCitiz) / resume.population_total : null;
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard Mobilité</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <span className="text-sm text-gray-500">Bordeaux Métropole</span>
-          <DataModeNotice meta={s.meta} />
+    <div className="relative h-screen w-screen overflow-hidden bg-night">
+      <NightMap
+        carreaux={carreaux?.geojson ?? null}
+        stations={stations}
+        mode={mode}
+        typesVisibles={types}
+        recos={affichees}
+        allumes={allumes}
+        focus={focus}
+        survol={survol}
+        orbite={intro}
+      />
+
+      {/* Vignettage pour faire ressortir les panneaux */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(6,8,13,0.75)_100%)]" />
+
+      {intro ? (
+        <Intro resume={resume} onEntrer={() => setIntro(false)} />
+      ) : (
+        <>
+          <div className="absolute left-4 top-24 z-[900] hidden sm:left-5 md:block">
+            <LayerPanel mode={mode} onMode={setMode} types={types} onTypes={setTypes} />
+          </div>
+
+          <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 top-24 z-[900] hidden w-72 lg:block">
+            <RecoList recos={affichees} total={recos.length} onSurvol={setSurvol} onChoix={setFocus} choisie={focus?.rank ?? null} />
+          </div>
+
+          <div className="absolute bottom-4 left-1/2 z-[950] -translate-x-1/2 lg:left-[calc(50%-9rem)]">
+            <BudgetDock
+              budget={budget}
+              onBudget={(b) => {
+                setFocus(null);
+                setBudget(b);
+              }}
+              perimetre={perimetre}
+              onPerimetre={(p) => {
+                setFocus(null);
+                setPerimetre(p);
+                if (p === 'tous') setMode('acces');
+              }}
+              chargement={chargement || !carreaux}
+              equipements={affichees.length}
+              habitants={habitants}
+              depense={depense}
+              voitures={voitures}
+              citizAvant={citizAvant}
+              citizApres={citizApres}
+            />
+          </div>
+        </>
+      )}
+
+      {erreur && (
+        <div className="glass absolute left-1/2 top-24 z-[1200] -translate-x-1/2 rounded-2xl border-ember/40 px-4 py-3 text-sm text-ember">
+          Données indisponibles : {erreur}
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          title="Population"
-          value={formatNumber(s.population_total)}
-          subtitle={`${formatNumber(s.zones_count)} carreaux, dont ${formatNumber(s.masked_zones_count)} masqués (non comptés)`}
-          icon={<Users size={20} />}
-          color="#3b82f6"
-        />
-        <StatCard
-          title="Arrêts et stations"
-          value={formatNumber(s.stations_count)}
-          subtitle="offre existante"
-          icon={<MapPin size={20} />}
-          color="#8b5cf6"
-        />
-        <StatCard
-          title="Option à 400 m"
-          value={formatPercent(s.population_with_any_option_share)}
-          subtitle={`${formatNumber(s.population_with_any_option)} habitants`}
-          icon={<Footprints size={20} />}
-          color="#22c55e"
-        />
-        <StatCard
-          title="Citiz à 400 m"
-          value={formatPercent(s.citiz.population_within_5min_share)}
-          subtitle={`${formatNumber(s.citiz.stations_count)} stations Citiz`}
-          icon={<Car size={20} />}
-          color="#f59e0b"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {levels.loading ? (
-          <Spinner label="Chargement de la répartition..." />
-        ) : levels.error ? (
-          <ErrorState message={`Répartition indisponible : ${levels.error}`} />
-        ) : levels.data && levels.data.available ? (
-          <PopulationChart
-            title="Population par niveau de couverture"
-            data={levels.data.groups.map((g) => ({
-              label: COVERAGE_LEVEL_LABELS[g.key as CoverageLevel] ?? g.key,
-              population: g.population,
-              color: COVERAGE_LEVEL_COLORS[g.key as CoverageLevel] ?? '#6b7280',
-            }))}
-            footnote={
-              s.meta.coverage_thresholds
-                ? `Faible : 1 à ${s.meta.coverage_thresholds.low_max} options, moyenne : jusqu'à ${s.meta.coverage_thresholds.medium_max}, élevée : au-delà. Carreaux masqués exclus.`
-                : undefined
-            }
-          />
-        ) : (
-          <EmptyState message="Niveaux de couverture non disponibles pour ces données." />
-        )}
-        <StationsPieChart byType={s.stations_by_type} />
-      </div>
+      )}
     </div>
   );
 }
