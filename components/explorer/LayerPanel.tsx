@@ -52,9 +52,9 @@ export function LayerPanel({ mode, onMode, types, onTypes }: Props) {
         )}
         <Pastille couleur="#2fac66">Nouvellement desservi par le scénario</Pastille>
       </ul>
-      <p className="mt-3 text-[11px] leading-relaxed text-ink-soft">Hauteur des carreaux de 200 m : nombre d’habitants (INSEE 2021). 5 min à pied = 400 m.</p>
+      <p className="mt-3 text-[11px] leading-relaxed text-ink-soft [@media(max-height:820px)]:hidden">Hauteur des carreaux de 200 m : nombre d’habitants (INSEE 2021). 5 min à pied = 400 m.</p>
 
-      <div className="label-mono mb-2 mt-4">Offre existante</div>
+      <div className="label-mono mb-2 mt-4 [@media(max-height:820px)]:mt-3">Offre existante</div>
       <div className="flex flex-wrap gap-1.5">
         {TYPES.map(({ type, label }) => {
           const actif = types.includes(type);

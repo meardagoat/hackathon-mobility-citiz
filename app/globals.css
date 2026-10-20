@@ -85,15 +85,6 @@ body {
   to { offset-distance: 100%; }
 }
 
-/* Leaflet (pages Offre et Classement) */
-.leaflet-pane { z-index: 400; }
-.leaflet-top, .leaflet-bottom { z-index: 800; }
-.leaflet-control { z-index: 900; }
-.leaflet-popup { z-index: 1000; }
-.leaflet-container { background: var(--paper-2); font-family: var(--font-fira), sans-serif; }
-/* Fond OpenStreetMap adouci, dans les tons Citiz */
-.leaflet-tile-pane { filter: grayscale(0.85) contrast(0.92) brightness(1.04); }
-
 /* MapLibre */
 .maplibregl-ctrl-attrib {
   background: rgba(255, 255, 255, 0.7) !important;

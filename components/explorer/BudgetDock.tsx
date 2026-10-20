@@ -28,8 +28,8 @@ interface Props {
 export function BudgetDock(p: Props) {
   const index = BUDGETS.indexOf(p.budget as (typeof BUDGETS)[number]);
   return (
-    <div className="glass rise w-[min(860px,calc(100vw-2rem))] rounded-3xl p-5 shadow-[0_30px_80px_rgba(0,0,0,0.55)]" style={{ animationDelay: '0.25s' }}>
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
+    <div className="glass rise w-[min(860px,calc(100vw-2rem))] rounded-3xl p-5 [@media(max-height:820px)]:p-4" style={{ animationDelay: '0.25s' }}>
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center [@media(max-height:820px)]:gap-3">
         {/* Budget */}
         <div className="flex-1">
           <div className="mb-3 flex items-baseline justify-between">
@@ -95,16 +95,16 @@ export function BudgetDock(p: Props) {
       </div>
 
       {/* Compteurs */}
-      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-ink/[0.04] sm:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-ink/[0.04] sm:grid-cols-4 [@media(max-height:820px)]:mt-3">
         <Compteur label="Équipements" valeur={<AnimatedNumber value={p.equipements} format={fmtEntier} duration={400} />} />
-        <Compteur label="Habitants gagnés" accent valeur={<AnimatedNumber value={p.habitants} format={(n) => `+${fmtEntier(n)}`} />} />
+        <Compteur label={p.perimetre === 'tous' ? 'Gains cumulés*' : 'Habitants gagnés'} accent valeur={<AnimatedNumber value={p.habitants} format={(n) => `+${fmtEntier(n)}`} />} />
         <Compteur label="Investi" valeur={<AnimatedNumber value={p.depense} format={fmtEuros} />} />
         <Compteur label="Voitures en moins" valeur={<AnimatedNumber value={p.voitures} format={fmtEntier} />} />
       </div>
 
       {/* Avant / après */}
       {p.citizAvant !== null && p.citizApres !== null && (
-        <div className="mt-4">
+        <div className="mt-4 [@media(max-height:820px)]:mt-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="label-mono">Habitants à 5 min d’une station Citiz</span>
             <span className="font-mono text-xs text-ink-dim">
@@ -124,7 +124,8 @@ export function BudgetDock(p: Props) {
         </div>
       )}
       {p.chargement && <div className="mt-3 h-px w-full animate-pulse bg-teal/60" />}
-      <div className="mt-3 hidden justify-end gap-4 lg:flex">
+      <div className="mt-3 hidden items-center justify-end gap-4 lg:flex [@media(max-height:820px)]:hidden">
+        {p.perimetre === 'tous' && <span className="mr-auto text-[11px] text-ink-soft">* additionnés par type : un habitant peut gagner un bus et une Citiz</span>}
         <span className="label-mono !text-[9.5px] !text-ink-soft">1 – 4 budget</span>
         <span className="label-mono !text-[9.5px] !text-ink-soft">C / T équipements</span>
         <span className="label-mono !text-[9.5px] !text-ink-soft">R rejouer</span>
@@ -135,9 +136,9 @@ export function BudgetDock(p: Props) {
 
 function Compteur({ label, valeur, accent }: { label: string; valeur: React.ReactNode; accent?: boolean }) {
   return (
-    <div className="bg-paper px-4 py-3">
+    <div className="bg-paper px-4 py-3 [@media(max-height:820px)]:py-2">
       <div className="label-mono mb-1">{label}</div>
-      <div className={cn('font-display text-2xl font-semibold', accent ? 'text-leaf' : 'text-ink')}>{valeur}</div>
+      <div className={cn('font-display text-2xl font-semibold [@media(max-height:820px)]:text-xl', accent ? 'text-leaf' : 'text-ink')}>{valeur}</div>
     </div>
   );
 }
