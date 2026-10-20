@@ -1,7 +1,7 @@
 // Données de la page Explorer : carreaux complets (l'API plafonne à 5 000 par requête),
 // stations, et calcul des carreaux nouvellement desservis par les recommandations.
 import { api } from '@/lib/api';
-import type { CoverageResponse, EquipmentType, Recommendation, StationType, StationsResponse } from '@/types/api';
+import type { CoverageResponse, EquipmentType, Perimeter, Recommendation, RecommendationResponse, StationType, StationsResponse } from '@/types/api';
 
 export const RAYON_M = 400;
 
@@ -35,7 +35,26 @@ export interface CarreauxGeoJSON {
   }[];
 }
 
-export async function chargerCarreaux(): Promise<{ carreaux: Carreau[]; geojson: CarreauxGeoJSON }> {
+// Les données ne changent pas pendant la démo : une seule requête par session, partagée entre les pages
+let carreauxEnCours: Promise<{ carreaux: Carreau[]; geojson: CarreauxGeoJSON }> | null = null;
+let stationsEnCours: Promise<StationsResponse> | null = null;
+const scenarios = new Map<string, Promise<RecommendationResponse>>();
+
+export function chargerCarreaux(): Promise<{ carreaux: Carreau[]; geojson: CarreauxGeoJSON }> {
+  if (!carreauxEnCours) carreauxEnCours = telechargerCarreaux().catch((e) => { carreauxEnCours = null; throw e; });
+  return carreauxEnCours;
+}
+
+export function chargerScenario(budget: number, perimetre: Perimeter): Promise<RecommendationResponse> {
+  const cle = `${budget}|${perimetre}`;
+  if (!scenarios.has(cle)) {
+    const types: EquipmentType[] = perimetre === 'citiz' ? ['citiz_station'] : ['citiz_station', 'bus_stop', 'bike_station'];
+    scenarios.set(cle, api.recommendations({ budget, equipment_types: types, max_results: 100 }).catch((e) => { scenarios.delete(cle); throw e; }));
+  }
+  return scenarios.get(cle)!;
+}
+
+async function telechargerCarreaux(): Promise<{ carreaux: Carreau[]; geojson: CarreauxGeoJSON }> {
   const reponses: CoverageResponse[] = await Promise.all(
     BANDES.map(([ouest, est]) => api.coverage({ bbox: `${ouest},44.6,${est},45.1`, limit: 5000 })),
   );
@@ -75,8 +94,9 @@ export async function chargerCarreaux(): Promise<{ carreaux: Carreau[]; geojson:
   return { carreaux, geojson };
 }
 
-export async function chargerStations(): Promise<StationsResponse> {
-  return api.stations({ limit: 20000 });
+export function chargerStations(): Promise<StationsResponse> {
+  if (!stationsEnCours) stationsEnCours = api.stations({ limit: 20000 }).catch((e) => { stationsEnCours = null; throw e; });
+  return stationsEnCours;
 }
 
 // Distance approchée en mètres (suffisante à l'échelle d'une métropole)

@@ -82,6 +82,7 @@ export function Onboarding({ donnees, onTerminer }: { donnees: Chargement; onTer
 
   useEffect(() => {
     const touche = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onTerminer(); // Échap passe l'accueil à tout moment, chargement compris
       if (etape === 0) return;
       if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
@@ -89,7 +90,6 @@ export function Onboarding({ donnees, onTerminer }: { donnees: Chargement; onTer
         else onTerminer();
       }
       if (e.key === 'ArrowLeft' && etape > 1) setEtape(etape - 1);
-      if (e.key === 'Escape') onTerminer();
     };
     window.addEventListener('keydown', touche);
     return () => window.removeEventListener('keydown', touche);

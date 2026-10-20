@@ -2,8 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
-import { carreauxAllumes, chargerCarreaux, chargerStations, indexer, type Carreau, type CarreauxGeoJSON } from '@/lib/explorer';
-import { PERIMETERS } from '@/lib/constants';
+import { carreauxAllumes, chargerCarreaux, chargerScenario, chargerStations, indexer, type Carreau, type CarreauxGeoJSON } from '@/lib/explorer';
 import type { Perimeter, Recommendation, RecommendationResponse, StationType, StationsResponse, SummaryResponse } from '@/types/api';
 import { BudgetDock } from '@/components/explorer/BudgetDock';
 import { RecoList } from '@/components/explorer/RecoList';
@@ -15,8 +14,11 @@ const CityMap = dynamic(() => import('@/components/explorer/CityMap'), { ssr: fa
 
 const PAS_ANIMATION_MS = 110;
 
+// L'accueil ne se joue qu'une fois par visite : revenir sur Explorer depuis une autre page ne le rejoue pas.
+let accueilVu = false;
+
 export default function ExplorerPage() {
-  const [intro, setIntro] = useState(true);
+  const [intro, setIntro] = useState(!accueilVu);
   const [resume, setResume] = useState<SummaryResponse | null>(null);
   const [carreaux, setCarreaux] = useState<{ liste: Carreau[]; geojson: CarreauxGeoJSON } | null>(null);
   const [stations, setStations] = useState<StationsResponse | null>(null);
@@ -33,7 +35,10 @@ export default function ExplorerPage() {
   const [focus, setFocus] = useState<Recommendation | null>(null);
   const cache = useRef(new Map<string, RecommendationResponse>());
   const [scenarioIntro, setScenarioIntro] = useState<RecommendationResponse | null>(null);
-  const terminerIntro = useCallback(() => setIntro(false), []);
+  const terminerIntro = useCallback(() => {
+    accueilVu = true;
+    setIntro(false);
+  }, []);
 
   // Données de base
   useEffect(() => {
@@ -60,8 +65,7 @@ export default function ExplorerPage() {
       return;
     }
     setChargement(true);
-    api
-      .recommendations({ budget, equipment_types: PERIMETERS[perimetre].equipment_types, max_results: 100 })
+    chargerScenario(budget, perimetre)
       .then((r) => {
         cache.current.set(cle, r);
         if (cle === '1000000|citiz') setScenarioIntro(r);
@@ -95,7 +99,10 @@ export default function ExplorerPage() {
         setFocus(null);
         setBudget(budgets[Number(e.key) - 1]);
       }
-      if (e.key === 'c') setPerimetre('citiz');
+      if (e.key === 'c') {
+        setPerimetre('citiz');
+        setMode('citiz');
+      }
       if (e.key === 't') {
         setPerimetre('tous');
         setMode('acces');
@@ -162,7 +169,7 @@ export default function ExplorerPage() {
               onPerimetre={(p) => {
                 setFocus(null);
                 setPerimetre(p);
-                if (p === 'tous') setMode('acces');
+                setMode(p === 'tous' ? 'acces' : 'citiz');
               }}
               chargement={chargement || !carreaux}
               equipements={affichees.length}
