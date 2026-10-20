@@ -186,7 +186,7 @@ WHERE donnee_masquee = 0;
 ├── fabric/             notebooks Fabric (fabric/notebooks/), synchronisation GitHub, génération des notebooks
 ├── backend/            API FastAPI et ses tests
 ├── tests/              tests de la collecte
-├── app/                interface de démonstration (vide pour l'instant)
+├── app/                pages de l'interface de démonstration (Next.js ; components/, lib/, types/ à la racine)
 ├── notebooks/          exploration (vide pour l'instant)
 ├── data/               données locales raw/ et processed/ (non versionnées)
 ├── docs/               documentation technique
