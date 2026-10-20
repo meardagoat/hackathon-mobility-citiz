@@ -4,6 +4,7 @@ Tables Delta du Lakehouse Fabric `LakeHouseZ` de l'espace HackathonZ (copies Par
 Sources et licences : [DATA_SOURCES.md](../DATA_SOURCES.md). Chargement : [fabric/README.md](../fabric/README.md).
 
 Conventions communes à toutes les tables :
+- `licence` : code de licence du jeu sur le Point d'Accès National (`lov2` Licence Ouverte 2.0, `odc-odbl` ODbL : obligation de partage à l'identique des bases dérivées, `notspecified` non précisée) ;
 - `date_collecte` : horodatage UTC de la collecte ;
 - `jeu_id` / `ressource_id` : identifiants du jeu et de la ressource sur transport.data.gouv.fr (traçabilité) ;
 - coordonnées en **WGS84** (`lat`, `lon`), sauf mention contraire.
@@ -50,7 +51,7 @@ Les valeurs peuvent être décimales : l'INSEE répartit les ménages pour respe
 ### `gbfs_flux`: catalogue des flux (178 lignes)
 
 Un flux GBFS publié sur le Point d'Accès National, avec son statut de collecte.
-Colonnes : `jeu_titre`, `producteur`, `sous_types` (bicycle, scooter, carsharing, freefloating), `est_citiz`, `url`, `page_pan`, `version_gbfs`, `statut` (`ok` ou message d'erreur), `erreurs_partielles`, `nb_stations`, `nb_vehicules`.
+Colonnes : `jeu_titre`, `producteur`, `sous_types` (bicycle, scooter, carsharing, freefloating), `est_citiz`, `licence`, `url`, `page_pan`, `version_gbfs`, `statut` (`ok` ou message d'erreur), `erreurs_partielles`, `nb_stations`, `nb_vehicules`.
 
 ### `gbfs_stations`: stations fixes
 
@@ -67,7 +68,7 @@ Colonnes : `jeu_titre`, `producteur`, `sous_types` (bicycle, scooter, carsharing
 Types de véhicules par système : `vehicle_type_id`, `form_factor` (bicycle, car, scooter_standing…), `propulsion_type` (human, electric_assist, combustion…), `nom`.
 
 ### `gbfs_etat_stations`: historique de disponibilité
-Une ligne par station et par collecte : `station_id`, `vehicules_disponibles`, `places_disponibles`, `est_installee`, `est_en_location`, `derniere_maj`. **La table s'enrichit à chaque exécution** du notebook GBFS.
+Une ligne par station et par collecte : `station_id`, `vehicules_disponibles`, `places_disponibles`, `est_installee`, `est_en_location`, `derniere_maj`. **La table s'enrichit à chaque exécution** du notebook GBFS : chaque photo est ajoutée à la table Delta (la copie Parquet de `Files/raw/tables/` ne contient que la dernière photo, les précédentes sont dans `Files/raw/historique/`).
 
 ### `gbfs_vehicules`: historique des véhicules
 Une ligne par véhicule visible et par collecte : `vehicule_id`, `vehicle_type_id`, `station_id` (autopartage en station, dont Citiz) ou `lat`/`lon` (free-floating), `est_reserve`, `est_indisponible`.
@@ -79,15 +80,15 @@ Pour Citiz : jointure `gbfs_vehicules.station_id = gbfs_stations.station_id` sur
 ## GTFS : transports en commun
 
 ### `gtfs_catalogue`: GTFS publiés en France (565 lignes)
-`jeu_titre`, `producteur`, `zones_couvertes`, `zones_insee`, `types_zones` (commune, epci, region…), `modes` (bus, tramway, metro, rail…), `reseaux`, `date_fin_validite`, `disponible`, `url`, `page_pan`.
+`jeu_titre`, `producteur`, `licence`, `zones_couvertes`, `zones_insee`, `types_zones` (commune, epci, region…), `modes` (bus, tramway, metro, rail…), `reseaux`, `date_fin_validite`, `disponible`, `mise_a_jour` (dernière publication de la ressource), `url`, `page_pan`.
 
 ### `gtfs_arrets_france`: tous les arrêts de France (638 000 lignes, 418 jeux)
 Agrégat national publié par transport.data.gouv.fr, **non dédoublonné** (un même arrêt peut apparaître dans plusieurs jeux).
-Colonnes : `dataset_custom_title`, `dataset_organisation`, `dataset_id`, `resource_id`, `stop_id`, `stop_name`, `stop_lat`, `stop_lon`, `location_type` (0 = point d'arrêt, 1 = zone d'arrêt / station, 2 = entrée), `agency_id`, `agency_name`.
+Colonnes : `dataset_custom_title`, `dataset_organisation`, `dataset_id`, `resource_id`, `stop_id`, `stop_name`, `stop_lat`, `stop_lon`, `location_type` (0 = point d'arrêt, 1 = zone d'arrêt / station, 2 = entrée), `agency_id`, `agency_name`, `fichier_source` (export utilisé), `licence_reseau` (licence du GTFS d'origine, vide si ce GTFS n'est plus publié).
 Cette table ne contient pas le mode de transport : il s'obtient via les GTFS complets ci-dessous.
 
 ### `gtfs_ressources`: statut de lecture des GTFS de la zone d'étude
-Une ligne par GTFS sélectionné : `ressource_id`, `jeu_titre`, `url`, `statut` (`ok` ou message d'erreur), `fichiers` (fichiers lus), `nb_arrets`.
+Une ligne par GTFS sélectionné : `ressource_id`, `jeu_titre`, `url`, `licence`, `mise_a_jour`, `statut` (`ok` ou message d'erreur), `fichiers` (fichiers lus), `nb_arrets`.
 Un GTFS dont un fichier est illisible est écarté en entier (statut en erreur) : les tables ci-dessous ne contiennent jamais un réseau partiel, par exemple des arrêts sans courses.
 
 ### GTFS complets de la zone d'étude

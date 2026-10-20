@@ -25,7 +25,12 @@ Les notebooks sont des **notebooks Python** (2 vCores, sans Spark) : ils démarr
 Ouvrir chaque notebook, ajuster si besoin la cellule de paramètres, puis **Exécuter tout**.
 
 - `03_collecte_gtfs` : le paramètre `ZONE` choisit les réseaux dont on charge les GTFS complets (mots-clés sur la ville, le réseau ou le code INSEE ; `["*"]` = toute la France, plusieurs Go). Par défaut : Bordeaux Métropole et Gironde.
-- `02_collecte_gbfs` : chaque exécution **ajoute** une photo de l'état des stations et véhicules aux tables `gbfs_etat_stations` et `gbfs_vehicules`. Pour constituer un historique de disponibilité, planifier le notebook : **Exécuter → Planifier**, toutes les 30 minutes.
+- `02_collecte_gbfs` : chaque exécution **ajoute** une photo de l'état des stations et véhicules aux tables `gbfs_etat_stations` et `gbfs_vehicules`, sans relire ni réécrire l'historique. Pour constituer un historique de disponibilité, planifier le notebook : **Exécuter → Planifier**, toutes les 30 minutes.
+
+Règles de chargement (dernière cellule de chaque notebook) :
+- une table produite par l'exécution **remplace** la table Delta ; une photo GBFS est **ajoutée** à l'historique ;
+- une table du notebook qui n'a pas été produite est **supprimée**, pour ne jamais publier d'anciennes données. Par exemple, changer `ZONE` vers des réseaux sans `calendar.txt` supprime `gtfs_calendar`, et `AVEC_STOP_TIMES = False` supprime `gtfs_stop_times`. Un historique GBFS sans nouvelle photo reste inchangé ;
+- les fichiers téléchargés (agrégat des arrêts, ZIP GTFS) sont réutilisés tant que leur source n'a pas changé : un nouvel export ou un GTFS mis à jour sur le Point d'Accès National est retéléchargé automatiquement (`FORCE = True` force le retéléchargement).
 
 ## Résultat dans le Lakehouse
 
@@ -34,8 +39,9 @@ LakeHouseZ
 ├── Files/raw/
 │   ├── insee/   fichier ZIP INSEE d'origine
 │   ├── gbfs/    réponses JSON brutes de chaque flux GBFS
-│   ├── gtfs/    agrégat national des arrêts (CSV) + ZIP GTFS de la zone
-│   └── tables/  copies Parquet des tables
+│   ├── gtfs/    agrégat national des arrêts (CSV) + ZIP GTFS de la zone (+ version de chaque fichier)
+│   ├── historique/  une archive Parquet par photo GBFS
+│   └── tables/  copies Parquet des tables de la dernière exécution
 └── Tables/dbo/  tables Delta, interrogeables en SQL (point de terminaison SQL) et Power BI
 ```
 
@@ -64,6 +70,8 @@ L'intégration Git native de Fabric n'accepte pas GitHub sur notre tenant (seul 
 
 `00_synchro_github` ne contient que ses paramètres et l'appel au script `fabric/synchro_github.py` sur GitHub : il exécute toujours la dernière version du script, mais ne se met jamais à jour lui-même (Fabric interdit à un notebook de réécrire sa propre définition). Pour le recréer : **New item → Notebook** nommé `00_synchro_github`, attacher le Lakehouse, coller ses deux cellules depuis `fabric/notebooks/00_synchro_github.ipynb`.
 
+**Sécurité** : `00_synchro_github` exécute le script de la branche choisie avec les droits Fabric de la personne qui le lance. Il faut donc que seul du code relu arrive sur `dev` : protéger la branche sur GitHub (**Settings → Branches → Add rule** sur `dev` : pull request obligatoire avec au moins une approbation, pas de push forcé). À défaut, épingler une version relue en mettant un identifiant de commit dans `BRANCHE` (ex. `BRANCHE = "2db50c9..."`, le SHA complet) au lieu d'un nom de branche.
+
 Les notebooks qui ne sont pas dans le dépôt (ex. créés par un coéquipier directement dans Fabric) ne sont jamais touchés. En revanche, une modification faite dans Fabric sur un notebook synchronisé est **écrasée** à la synchronisation suivante : il faut modifier le code dans le dépôt. Si un notebook synchronisé est ouvert pendant la synchronisation, Fabric affiche « Another user has saved changes » : cliquer sur **View changes** puis **Keep this version** côté *Saved version*.
 
 ### Si le notebook `00_synchro_github` n'existe pas (création bloquée dans Fabric)
@@ -83,4 +91,4 @@ Les notebooks sont **générés** à partir des scripts de `src/ingestion/`. Pou
 1. modifier le script concerné dans `src/ingestion/` ;
 2. le tester en local : `python -m src.ingestion.gbfs` (sortie dans `data/raw/`) ;
 3. régénérer les notebooks : `python fabric/build_notebooks.py` ;
-4. réimporter le notebook modifié dans Fabric.
+4. ouvrir une pull request vers `dev`, puis, une fois fusionnée, lancer `00_synchro_github` dans Fabric.
