@@ -102,9 +102,16 @@ for nom in TABLES + HISTORIQUES:
         write_deltalake(cible, donnees, mode="overwrite", schema_mode="overwrite", storage_options=OPTIONS)
         print(f"{nom} : table Delta remplacée ({donnees.num_rows:,} lignes)")
         continue
+    # photo déjà publiée (cellule relancée après un échec partiel) : pas de doublon
+    photo = donnees.column("date_collecte")[0].as_py() if "date_collecte" in donnees.column_names and donnees.num_rows else None
+    existe = DeltaTable.is_deltatable(cible, storage_options=OPTIONS)
+    if existe and photo and len(DeltaTable(cible, storage_options=OPTIONS).to_pandas(
+            columns=["date_collecte"], filters=[("date_collecte", "=", photo)])):
+        print(f"{nom} : photo du {photo} déjà présente, rien à ajouter")
+        continue
     # une colonne dont le type change (ex. booléens écrits en texte par une version précédente)
-    # serait convertie silencieusement : on réécrit alors l'historique une fois, avec les bons types
-    if DeltaTable.is_deltatable(cible, storage_options=OPTIONS):
+    # serait convertie silencieusement : on réécrit alors l'historique une fois, avec les types imposés
+    if existe:
         existant = {f.name: str(f.type) for f in DeltaTable(cible, storage_options=OPTIONS).schema().fields}
         nouveau = {f.name: str(f.type) for f in (Schema.from_arrow(donnees.schema) if hasattr(Schema, "from_arrow")
                                                  else Schema.from_pyarrow(donnees.schema)).fields}
@@ -114,9 +121,10 @@ for nom in TABLES + HISTORIQUES:
     if conflits:
         print(f"{nom} : types modifiés ({', '.join(conflits)}), réécriture unique de l'historique")
         ancien = DeltaTable(cible, storage_options=OPTIONS).to_pandas()
-        tout = _types_homogenes(pd.concat([ancien.astype({c: object for c in conflits}), donnees.to_pandas()],
-                                          ignore_index=True))
-        write_deltalake(cible, tout, mode="overwrite", schema_mode="overwrite", storage_options=OPTIONS)
+        tout = pd.concat([ancien.astype({c: object for c in conflits}), donnees.to_pandas()], ignore_index=True)
+        if "_typer" in globals():  # types déclarés par le module de collecte (TYPES_HISTORIQUES du GBFS)
+            tout = _typer(tout)
+        write_deltalake(cible, _types_homogenes(tout), mode="overwrite", schema_mode="overwrite", storage_options=OPTIONS)
     else:
         write_deltalake(cible, donnees, mode="append", schema_mode="merge", storage_options=OPTIONS)
     print(f"{nom} : {donnees.num_rows:,} lignes ajoutées à l'historique")
@@ -154,7 +162,7 @@ def construire(nb: dict) -> dict:
         _cellule("code", (SRC / "common.py").read_text()),
         _cellule("markdown", "## Collecte"),
         _cellule("code", _code_module(nb["module"])),
-        _cellule("code", nb["appel"] + "\n"),
+        _cellule("code", "TABLES_ECRITES.clear()  # seules les tables de cette collecte seront publiées\n" + nb["appel"] + "\n"),
         _cellule("markdown", "## Chargement en tables Delta"),
         _cellule("code", f"TABLES = {nb['tables']!r}\nHISTORIQUES = {nb['historiques']!r}\n\n" + CHARGEMENT_DELTA),
     ]
