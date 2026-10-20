@@ -1,8 +1,7 @@
 // Types et interfaces pour l'API Hackathon Mobilité
 
-// ============================================================================
 // TYPES DE BASE
-// ============================================================================
+
 
 export type TransportType = 'bus' | 'metro' | 'tram' | 'bike' | 'carsharing' | 'scooter';
 
@@ -14,7 +13,7 @@ export type Metric = 'coverage_score' | 'options_per_inhabitant' | 'population';
 
 // ============================================================================
 // GÉOMÉTRIE
-// ============================================================================
+
 
 export interface Point {
   type: 'Point';
@@ -29,8 +28,7 @@ export interface Polygon {
 export type Geometry = Point | Polygon;
 
 // ============================================================================
-// RÉPONSES API
-// ============================================================================
+
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -107,7 +105,7 @@ export interface MobilityTypesResponse {
 
 // ============================================================================
 // STATIONS
-// ============================================================================
+
 
 export interface Station {
   id: string;
