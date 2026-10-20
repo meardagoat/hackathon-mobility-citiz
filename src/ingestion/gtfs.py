@@ -14,6 +14,7 @@ Sorties :
   <raw>/gtfs/zips/<jeu>_<ressource>.zip
   <raw>/tables/gtfs_catalogue.parquet
   <raw>/tables/gtfs_arrets_france.parquet
+  <raw>/tables/gtfs_ressources.parquet  (statut de lecture de chaque GTFS de la zone)
   <raw>/tables/gtfs_<fichier>.parquet   (agency, routes, stops, trips, calendar, calendar_dates, stop_times)
 """
 import zipfile
@@ -80,11 +81,11 @@ def selectionner(cat: pd.DataFrame, zone: list[str], exclure_agregats: bool = Tr
     """Filtre le catalogue sur des mots-clés (nom de zone, de réseau, titre ou code INSEE).
     zone = ["*"] sélectionne tous les GTFS de France.
     exclure_agregats : écarte les agrégats régionaux, qui dupliquent les réseaux locaux."""
-    cat = cat[cat["disponible"].fillna(False)]
-    if zone == ["*"]:
-        return cat
+    cat = cat[cat["disponible"].astype("boolean").fillna(False).astype(bool)]
     if exclure_agregats:
         cat = cat[~cat["jeu_titre"].str.lower().str.startswith("agrégat")]
+    if zone == ["*"]:
+        return cat
     texte = (cat["jeu_titre"] + " " + cat["zones_couvertes"] + " " + cat["zones_insee"] + " "
              + cat["reseaux"] + " " + cat["producteur"].fillna("")).str.lower()
     masque = pd.Series(False, index=cat.index)
@@ -99,8 +100,10 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
     print(f"  {len(choix)} GTFS sélectionnés pour la zone {zone}")
     fichiers = FICHIERS_GTFS if avec_stop_times else [f for f in FICHIERS_GTFS if f != "stop_times"]
     morceaux = {f: [] for f in fichiers}
+    statuts = []
     for r in choix.to_dict("records"):
         zip_path = raw_dir() / "gtfs" / "zips" / f"{r['jeu_slug']}_{r['ressource_id']}.zip"
+        lus = {}
         try:
             download(r["url"], zip_path, force=force)
             with zipfile.ZipFile(zip_path) as z:
@@ -111,10 +114,20 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
                             df = pd.read_csv(fh, dtype=str, encoding="utf-8-sig")
                         df.insert(0, "ressource_id", str(r["ressource_id"]))
                         df.insert(1, "jeu_titre", r["jeu_titre"])
-                        morceaux[f].append(df)
+                        lus[f] = df
+            statut = "ok"
         except Exception as e:
             print(f"  ! {r['jeu_titre']} ({r['ressource_id']}) ignoré : {e}")
+            statut, lus = f"erreur: {e}", {}
+        # une ressource n'est publiée que si tous ses fichiers ont été lus : pas d'arrêts sans courses
+        for f, df in lus.items():
+            morceaux[f].append(df)
+        statuts.append({"ressource_id": str(r["ressource_id"]), "jeu_titre": r["jeu_titre"], "url": r["url"],
+                        "statut": statut, "fichiers": ",".join(lus),
+                        "nb_arrets": len(lus["stops"]) if "stops" in lus else None})
     horodatage = now_utc()
+    colonnes = ["ressource_id", "jeu_titre", "url", "statut", "fichiers", "nb_arrets"]
+    write_table(pd.DataFrame(statuts, columns=colonnes).assign(date_collecte=horodatage), "gtfs_ressources")
     for f, dfs in morceaux.items():
         if dfs:
             df = pd.concat(dfs, ignore_index=True).assign(date_collecte=horodatage)

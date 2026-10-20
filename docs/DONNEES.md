@@ -86,6 +86,10 @@ Agrégat national publié par transport.data.gouv.fr, **non dédoublonné** (un 
 Colonnes : `dataset_custom_title`, `dataset_organisation`, `dataset_id`, `resource_id`, `stop_id`, `stop_name`, `stop_lat`, `stop_lon`, `location_type` (0 = point d'arrêt, 1 = zone d'arrêt / station, 2 = entrée), `agency_id`, `agency_name`.
 Cette table ne contient pas le mode de transport : il s'obtient via les GTFS complets ci-dessous.
 
+### `gtfs_ressources`: statut de lecture des GTFS de la zone d'étude
+Une ligne par GTFS sélectionné : `ressource_id`, `jeu_titre`, `url`, `statut` (`ok` ou message d'erreur), `fichiers` (fichiers lus), `nb_arrets`.
+Un GTFS dont un fichier est illisible est écarté en entier (statut en erreur) : les tables ci-dessous ne contiennent jamais un réseau partiel, par exemple des arrêts sans courses.
+
 ### GTFS complets de la zone d'étude
 Fichiers GTFS standards, concaténés pour tous les réseaux sélectionnés (paramètre `ZONE`, par défaut Bordeaux Métropole + Gironde : TBM, cars régionaux de Gironde, bac, navette aéroport, Sud Gironde ; les agrégats régionaux sont exclus car ils dupliquent ces réseaux). Toutes les colonnes d'origine sont conservées (texte), plus `ressource_id` et `jeu_titre`. Spécification : https://gtfs.org/schedule/reference/
 
