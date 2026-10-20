@@ -16,7 +16,8 @@ Le sujet officiel est dans [docs/sujet_hackathon_mobility.pdf](docs/sujet_hackat
 ```
 data/raw/          données brutes téléchargées (non versionnées)
 data/processed/    données nettoyées / jointes (non versionnées)
-src/ingestion/     scripts de téléchargement et nettoyage (GTFS, GBFS, INSEE, IGN, OSM)
+src/ingestion/     scripts de collecte des données brutes (INSEE, GBFS dont Citiz, GTFS)
+fabric/            notebooks Microsoft Fabric de chargement dans le Lakehouse (voir fabric/README.md)
 src/accessibility/ isochrones 5 min, score d'accessibilité, population desservie
 src/model/         modèle prédictif de valeur d'un emplacement
 src/optimization/  coûts + sélection des emplacements sous budget
@@ -35,9 +36,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Données
+
+Les données brutes sont chargées dans le Lakehouse Fabric `LakeHouseZ` (espace HackathonZ) : voir [fabric/README.md](fabric/README.md) et le dictionnaire des tables [docs/DONNEES.md](docs/DONNEES.md).
+
+Pour les récupérer en local (sortie dans `data/raw/tables/*.parquet`) :
+
+```bash
+python -m src.ingestion.insee
+python -m src.ingestion.gbfs
+python -m src.ingestion.gtfs   # zone Bordeaux par défaut
+```
+
 ## Conventions d'équipe
 
-- Une branche par personne / par tâche (`data/gtfs`, `access/isochrones`, `model/v1`…), merge sur `main` via pull request.
+- Une branche par personne / par tâche (`data/gtfs`, `access/isochrones`, `model/v1`…), pull request vers `dev` (branche d'intégration), puis `dev` vers `main` pour les versions stables.
 - On ne commit jamais de données : on commit le script qui les télécharge.
 - Toute nouvelle source de données est ajoutée immédiatement dans `DATA_SOURCES.md`.
 - Les fichiers échangés entre modules sont en GeoParquet dans `data/processed/`, en projection Lambert 93 (EPSG:2154) pour les calculs de distance, WGS84 (EPSG:4326) pour l'affichage.

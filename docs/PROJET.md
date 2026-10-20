@@ -55,7 +55,20 @@ On a **2,5 jours**, et l'essentiel est de **convaincre**. La soutenance comprend
 
 ## 5. Approche technique proposée
 
-**Zone d'étude** : une métropole où Citiz est déjà présent, pour pouvoir apprendre sur ses stations existantes. Proposition : **Strasbourg (Eurométropole)**. C'est le berceau de Citiz, avec un GTFS (CTS) et un GBFS vélo (Vélhop) disponibles. On valide ce choix ensemble au lancement. Si le temps le permet, on montre ensuite que la méthode se généralise à une deuxième ville.
+**Zone d'étude retenue : Bordeaux Métropole et Gironde.** Choix fait à partir des données collectées (stations Citiz GBFS et population INSEE, collecte du 2026-10-19) :
+
+| Département (métropole) | Habitants | Stations Citiz | Stations / 100 000 hab. | Population à 5 min à pied d'une station Citiz |
+|---|---|---|---|---|
+| Bas-Rhin (Strasbourg) | 1,08 M | 205 | 19,0 | 27 % |
+| Rhône (Lyon) | 1,77 M | 208 | 11,7 | 35 % |
+| Haute-Garonne (Toulouse) | 1,34 M | 122 | 9,1 | 19 % |
+| **Gironde (Bordeaux)** | **1,61 M** | **100** | **6,2** | **13 %** |
+| Nord (Lille) | 2,47 M | 71 | 2,9 | 8 % |
+
+- Citiz y est présent (100 stations) : on peut valider le modèle localement, mais la marge de développement est forte, contrairement à Strasbourg ou Lyon, déjà denses.
+- La Gironde fait partie des départements à plus forte croissance démographique : argument pour les besoins futurs.
+- Offre de transport riche (tram, bus et bateaux TBM, cars régionaux, vélos V³) et contraste fort entre centre dense et périurbain : utile pour l'argument d'équité.
+- Le modèle peut apprendre sur les 1 617 stations Citiz de toute la France ; la zone sert à la démonstration et aux recommandations.
 
 **Unité d'analyse** : le **carreau INSEE de 200 m** (population, revenus, ménages).
 
