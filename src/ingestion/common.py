@@ -121,6 +121,11 @@ def write_table(df: pd.DataFrame, name: str, historique: bool = False) -> Path:
     archivée dans <raw>/historique/<name>/<date_collecte>.parquet, sans relire les photos
     précédentes (le notebook Fabric l'ajoute à la table Delta au lieu de la réécrire)."""
     path = tables_dir() / f"{name}.parquet"
+    if df.empty and not historique and path.exists():  # collecte vide : on garde les dernières données valides
+        print(f"  table {name} : aucune ligne collectée, version précédente conservée")
+        if name not in TABLES_ECRITES:
+            TABLES_ECRITES.append(name)
+        return path
     df = _types_homogenes(df.copy())  # ne modifie pas le DataFrame de l'appelant
     df.to_parquet(path, index=False)
     if historique:
@@ -131,6 +136,29 @@ def write_table(df: pd.DataFrame, name: str, historique: bool = False) -> Path:
         TABLES_ECRITES.append(name)
     print(f"  table {name} : {len(df):,} lignes -> {path}")
     return path
+
+
+def reprendre_precedent(df: pd.DataFrame, name: str, ids_echec, cle: str = "ressource_id", cles_ligne=None):
+    """Ajoute à df les lignes de la version précédente de la table pour les sources en échec :
+    une panne passagère d'un flux ne fait pas disparaître ses dernières données valides.
+    Ces lignes gardent leur date_collecte d'origine. cles_ligne : colonnes identifiant une ligne ;
+    si une source en échec a tout de même renvoyé une partie de ses lignes, elles priment sur les
+    anciennes (pas de doublon). Renvoie (table, identifiants des sources reprises)."""
+    path = tables_dir() / f"{name}.parquet"
+    ids = {str(i) for i in ids_echec}
+    if not ids or not path.exists():
+        return df, set()
+    precedent = pd.read_parquet(path)
+    if cle not in precedent:
+        return df, set()
+    precedent = precedent[precedent[cle].astype(str).isin(ids)]
+    if cles_ligne and len(df.columns) and len(precedent):
+        identifiant = lambda t: t[cles_ligne].astype(str).agg("|".join, axis=1)
+        precedent = precedent[~identifiant(precedent).isin(set(identifiant(df)))]
+    if precedent.empty:
+        return df, set()
+    print(f"  {name} : {len(precedent):,} lignes précédentes conservées pour {precedent[cle].nunique()} source(s) en échec")
+    return pd.concat([df, precedent], ignore_index=True) if len(df.columns) else precedent, set(precedent[cle].astype(str))
 
 
 def pan_catalog() -> list:
