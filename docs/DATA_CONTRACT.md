@@ -30,11 +30,11 @@ Valeur inconnue = `null`. Ordre d'exécution : 04 puis 05.
 | id_carreau | str | identifiant INSEE (`idcar_200m`), clé |
 | code_commune | str | code INSEE de la commune (5 caractères) |
 | lat, lon | float | centre du carreau |
-| population | int | habitants (Filosofi 2021). JSON : `null` si `donnee_masquee` |
+| population | int | habitants (Filosofi 2021). JSON : `null` si `donnee_masquee`. Delta/Parquet : valeur imputée INSEE non masquée, à masquer côté backend |
 | nb_options | int | arrêts + stations à moins de 400 m (tous types) |
 | nb_bus, nb_tram, nb_velo, nb_citiz… | int | même chose par type (une colonne par type présent) |
 | options_par_habitant | float | nb_options / population. JSON : `null` si `donnee_masquee` |
-| niveau_acces | int 1–5 | 1 = aucune option à 400 m ; 2 à 5 = quartiles de `options_par_habitant` parmi les carreaux desservis |
+| niveau_acces | int 1–5 | 1 = aucune option à 400 m ; 2 à 5 = quartiles de `nb_options` parmi les carreaux desservis (ne dépend pas de la population, donc ne révèle rien sur les carreaux masqués) |
 | couvert_citiz | bool | au moins une station Citiz à 400 m |
 | donnee_masquee | bool | carreau imputé par l'INSEE (`i_est_200 = 1`, moins de 11 ménages) : ne pas afficher les chiffres |
 
@@ -82,7 +82,7 @@ Une ligne par équipement choisi, pour chaque couple (`perimetre`, `budget_scena
 | score | float | valeur ajoutée relative |
 | adequation | float | probabilité du modèle |
 | voitures_evitees | int | 8 par station Citiz, 0 sinon |
-| budget_scenario | int | 100 000, 250 000, 500 000, 1 000 000 |
+| budget_scenario | int | 100 000, 250 000, 500 000, 1 000 000 (seules valeurs disponibles) |
 | perimetre | str | `tous` (citiz + velo + bus) ou `citiz` |
 
 Filtre côté API : `perimetre = ? AND budget_scenario = ?`, trié par `rang`.
