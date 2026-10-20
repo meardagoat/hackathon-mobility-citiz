@@ -13,112 +13,93 @@ La chaîne de traitement va des données publiques brutes jusqu'à une liste d'e
 
 ## 2. Zone d'étude
 
-Le projet est limité à **l'Eurométropole de Strasbourg** :
-
-- Citiz y est historiquement implanté, ce qui donne des stations existantes pour entraîner et valider le modèle ;
-- l'offre de transport y est variée (bus, tram, vélos en libre-service, autopartage) ;
-- les volumes de données restent raisonnables pour 2,5 jours.
-
-La méthode est générique : il suffit de changer la zone dans les paramètres pour l'appliquer à une autre ville.
+Le projet est limité à **Bordeaux Métropole**. La méthode est générique : il suffit de changer la zone dans les paramètres pour l'appliquer à une autre ville.
 
 ## 3. Vue d'ensemble
-
-La solution est organisée en trois blocs :
 
 | Bloc | Rôle | Outils |
 |---|---|---|
 | Sources | Données publiques ouvertes | transport.data.gouv.fr, INSEE, OpenStreetMap, IGN |
-| Traitement | Collecte, nettoyage, calculs, modèle | Microsoft Fabric (notebooks PySpark, Lakehouse) |
+| Traitement | Collecte, nettoyage, calculs, modèle | Microsoft Fabric (notebooks, Lakehouse) |
 | Restitution | Carte, indicateurs, recommandations | Power BI, `app/` |
+
+Dans Fabric, le pipeline est organisé dans le flux de tâches **« Mobilite Citiz Bordeaux »** de l'espace de travail **HackathonZ** :
+
+```
+Get data → Store data → Exploratory data analysis → Develop and train models
+→ Evaluate and score models → Apply the best model → Expose insight
+```
 
 ## 4. Sources de données
 
-| Source | Contenu | Format | Accès |
-|---|---|---|---|
-| Citiz Grand Est | Stations d'autopartage | GBFS v3 (JSON) | `https://backend.citiz.fr/public/provider/1/gbfs/v3.0/gbfs.json` |
-| transport.data.gouv.fr | Vélos et trottinettes en libre-service | GBFS (JSON) | API, flux temps réel |
-| transport.data.gouv.fr | Arrêts de bus et tram (CTS) | GTFS (zip de CSV) | Téléchargement |
-| INSEE Filosofi | Population et revenus par carreau de 200 m | CSV / GeoPackage | Téléchargement |
-| OpenStreetMap (Geofabrik) | Réseau de rues et chemins piétons | PBF | Téléchargement, extrait Alsace |
-| IGN Admin Express | Limites des communes et IRIS | GeoPackage | Téléchargement |
+| Source | Contenu | Format |
+|---|---|---|
+| transport.data.gouv.fr | Stations Citiz, vélos et trottinettes en libre-service | GBFS (JSON, temps réel) |
+| transport.data.gouv.fr | Arrêts de bus et tram (TBM) | GTFS (zip de CSV) |
+| INSEE Filosofi | Population et revenus par carreau de 200 m | CSV / GeoPackage |
+| OpenStreetMap (Geofabrik) | Réseau de rues et chemins piétons | PBF |
+| IGN Admin Express | Limites des communes et IRIS | GeoPackage |
 
 Le détail des sources, avec liens et licences, est dans [`DATA_SOURCES.md`](../DATA_SOURCES.md).
 
 ## 5. Traitement dans Microsoft Fabric
 
-### 5.1 Espace de travail
+### 5.1 Lakehouse
 
-Tous les éléments sont dans un même espace de travail Fabric partagé par l'équipe :
-
-- un **Lakehouse** (`LakeHouseMicrosoft`) ;
-- les **notebooks** de collecte, de calcul et de modélisation ;
-- le **rapport Power BI**.
-
-Chaque notebook est rattaché au Lakehouse comme Lakehouse par défaut.
-
-### 5.2 Lakehouse
+Tous les notebooks utilisent **LakeHouseZ** comme Lakehouse par défaut.
 
 ```
-LakeHouseMicrosoft
+LakeHouseZ
 ├── Files/
 │   └── raw/          données brutes, telles que téléchargées
-│       ├── gbfs/
-│       ├── gtfs/
-│       ├── insee/
-│       └── osm/
 └── Tables/           tables Delta nettoyées, utilisées par les calculs et Power BI
 ```
 
-- `Files/raw/` garde une copie des fichiers d'origine, pour pouvoir relancer les traitements sans tout retélécharger.
+- `Files/raw/` garde une copie des fichiers d'origine, pour relancer les traitements sans tout retélécharger.
 - `Tables/` contient les données propres, au format Delta, lisibles directement par Power BI.
 
-### 5.3 Notebooks
+### 5.2 Notebooks
 
-| Notebook | Rôle | Lit | Écrit |
-|---|---|---|---|
-| `01_collecte_insee` | Télécharge et filtre la population par carreau | INSEE | `Files/raw/insee`, `population_carreaux` |
-| `02_collecte_gbfs` | Récupère les stations Citiz, vélos, trottinettes | Flux GBFS | `Files/raw/gbfs`, `stations` |
-| `03_...` | Arrêts de bus et tram | GTFS | `stations` |
-| `04_...` | Calcul de l'accessibilité | `stations`, `population_carreaux` | `accessibilite` |
-| `05_...` | Modèle et optimisation | tables précédentes | `recommandations` |
+| Notebook | Étape du flux | Rôle |
+|---|---|---|
+| `00_synchro_github` | Get data | Récupère la dernière version du code depuis le dépôt GitHub |
+| `01_collecte_insee` | Get data | Population par carreau de 200 m |
+| `02_collecte_gbfs` | Get data | Stations Citiz, vélos, trottinettes |
+| `03_collecte_gtfs` | Get data | Arrêts de bus et tram |
+| `04_accessibilite` | Exploratory data analysis | Options de mobilité à 5 min à pied, population desservie |
+| `scoring` | Evaluate and score models | Score des emplacements candidats |
 
-Les notebooks `03` à `05` sont à compléter avec leurs noms définitifs.
-
-### 5.4 Calcul de l'accessibilité
+### 5.3 Calcul de l'accessibilité
 
 - Une station est considérée comme accessible si elle est à **moins de 5 minutes à pied**, soit environ **400 m**.
-- La distance est calculée à vol d'oiseau dans une première version, puis sur le réseau piéton OpenStreetMap pour une distance de marche réelle.
 - Pour chaque carreau de 200 m, on calcule le **nombre d'options de mobilité accessibles par habitant**.
 - Pour chaque station, on calcule la **population desservie** dans son rayon de 5 minutes.
 
-### 5.5 Modèle et optimisation
+### 5.4 Modèle et recommandations
 
-1. **Prédiction** : à partir des stations Citiz existantes, le modèle apprend ce qui caractérise un bon emplacement (densité, revenus, motorisation, offre de transport déjà présente) et attribue un score à chaque emplacement candidat.
-2. **Coût** : un coût estimé est associé à chaque type d'équipement (station d'autopartage, station de vélos, arrêt de bus).
-3. **Optimisation** : on sélectionne les emplacements qui maximisent la population nouvellement desservie sous contrainte de budget, sans compter deux fois les habitants déjà couverts (problème de couverture maximale).
+1. **Prédiction** : le modèle attribue un score à chaque emplacement candidat à partir des caractéristiques du quartier (population, revenus, offre de transport existante).
+2. **Coût** : un coût estimé est associé à chaque type d'équipement.
+3. **Optimisation** : on sélectionne les emplacements qui maximisent la population nouvellement desservie sous contrainte de budget, sans compter deux fois les habitants déjà couverts.
 
-Le modèle est évalué par validation croisée sur les stations existantes. Les métriques et les limites sont détaillées dans la documentation du modèle.
+Méthode d'évaluation et métriques : à compléter.
 
 ## 6. Restitution
 
-Le rapport Power BI se connecte directement aux tables du Lakehouse et contient trois pages :
+Le rapport Power BI (étape **Expose insight**) se connecte directement aux tables de LakeHouseZ :
 
-1. **Carte de chaleur** : accès à la mobilité par carreau, du moins au mieux desservi.
-2. **Stations** : stations existantes par type, avec la population desservie par chacune.
-3. **Recommandations** : emplacements proposés, coût, habitants nouvellement desservis, total selon le budget choisi.
-
-Le dossier `app/` contient l'interface de démonstration.
+1. **Carte de chaleur** : accès à la mobilité par carreau.
+2. **Stations** : stations existantes par type, avec la population desservie.
+3. **Recommandations** : emplacements proposés, coût, habitants nouvellement desservis.
 
 ## 7. Tables échangées
 
-| Table | Créée par | Utilisée par | Colonnes |
-|---|---|---|---|
-| `stations` | collecte GBFS / GTFS | calcul, Power BI | id, type, nom, lat, lon |
-| `population_carreaux` | collecte INSEE | calcul, modèle | id_carreau, lat, lon, population |
-| `accessibilite` | calcul | modèle, Power BI | id_carreau, nb_options, options_par_habitant |
-| `recommandations` | modèle | Power BI, app | lat, lon, type, cout, personnes_gagnees, rang |
-
-Noms provisoires, à confirmer avec l'équipe. Toute modification d'un nom de table ou de colonne doit être signalée, car elle impacte les étapes suivantes.
+| Table | Créée par | Colonnes |
+|---|---|---|
+| à compléter | `01_collecte_insee` | |
+| à compléter | `02_collecte_gbfs` | |
+| à compléter | `03_collecte_gtfs` | |
+| à compléter | `04_accessibilite` | |
+| à compléter | `scoring` | |
 
 ## 8. Organisation du dépôt
 
@@ -128,9 +109,9 @@ Noms provisoires, à confirmer avec l'équipe. Toute modification d'un nom de ta
 ├── README.md           présentation et lancement du projet
 ├── requirements.txt    dépendances Python
 ├── src/                code source (collecte, calculs, modèle)
-├── notebooks/          notebooks générés depuis src/, importés dans Fabric
+├── notebooks/          notebooks générés depuis src/
 ├── app/                interface de démonstration
-├── data/               petits fichiers d'exemple (pas de données volumineuses)
+├── data/               petits fichiers d'exemple
 ├── docs/               documentation technique
 ├── fabric/             éléments synchronisés depuis Fabric
 └── slides/             présentation
@@ -138,11 +119,10 @@ Noms provisoires, à confirmer avec l'équipe. Toute modification d'un nom de ta
 
 ## 9. Workflow de développement
 
-- Le code est écrit dans `src/`. Les notebooks sont générés à partir de ce code, puis importés dans Fabric.
+- Le code est écrit dans `src/`, puis les notebooks sont générés et synchronisés dans Fabric avec `00_synchro_github`.
 - Les notebooks ne sont **pas modifiés directement dans Fabric** : on les y exécute seulement.
 - Chaque membre travaille sur une branche `feature/...`, puis ouvre une Pull Request vers `dev`.
-- Les Pull Requests sont relues avant fusion.
-- `dev` est fusionnée dans `main` pour la version finale de la démo.
+- `dev` est fusionnée dans `main` pour la version finale.
 
 ```
 feature/...  →  dev  →  main
@@ -152,25 +132,25 @@ feature/...  →  dev  →  main
 
 1. Créer un espace de travail Fabric avec une capacité active.
 2. Créer un Lakehouse.
-3. Importer les notebooks du dossier `notebooks/` (Importer → Notebook → À partir de cet ordinateur).
-4. Rattacher chaque notebook au Lakehouse (Explorateur → Ajouter des éléments de données → Catalogue OneLake).
-5. Exécuter les notebooks dans l'ordre : `01`, `02`, puis les suivants.
-6. Ouvrir le rapport Power BI connecté au Lakehouse.
+3. Importer les notebooks et les rattacher au Lakehouse (Explorateur → Ajouter des éléments de données → Catalogue OneLake).
+4. Exécuter dans l'ordre : `00_synchro_github`, `01_collecte_insee`, `02_collecte_gbfs`, `03_collecte_gtfs`, `04_accessibilite`, `scoring`.
+5. Ouvrir le rapport Power BI connecté au Lakehouse.
 
 ## 11. Choix techniques
 
 | Choix | Raison |
 |---|---|
-| Microsoft Fabric | Calcul dans le cloud (pas de limite liée aux machines de l'équipe), stockage partagé, Power BI intégré |
+| Microsoft Fabric | Calcul dans le cloud, stockage partagé, Power BI intégré |
 | Lakehouse + Delta | Un seul point de stockage pour tous les notebooks et pour Power BI |
-| Code dans `src/`, notebooks générés | Code versionné proprement dans Git, notebooks toujours à jour |
+| Flux de tâches Fabric | Pipeline lisible, chaque notebook rattaché à son étape |
+| Code dans `src/`, synchronisé depuis GitHub | Code versionné proprement, notebooks toujours à jour |
 | Carreaux INSEE 200 m | Maille fine, adaptée à une distance de 5 min à pied |
-| Restriction à une métropole | Volumes maîtrisés, résultats vérifiables, méthode réutilisable ailleurs |
+| Restriction à Bordeaux Métropole | Volumes maîtrisés, résultats vérifiables, méthode réutilisable |
 
 ## 12. Limites et points d'attention
 
-- **Distances** : le calcul à vol d'oiseau surestime l'accessibilité ; le réseau piéton OSM est plus réaliste mais plus coûteux à calculer.
+- **Distances** : le calcul à vol d'oiseau surestime l'accessibilité ; le réseau piéton est plus réaliste mais plus coûteux à calculer.
 - **Données temps réel** : les flux GBFS donnent l'état à un instant donné ; l'usage réel des stations n'est pas publié.
 - **Coûts** : les coûts par équipement sont des estimations.
-- **Vie privée** : les carreaux INSEE peu peuplés sont regroupés ou masqués pour ne pas exposer de petits groupes d'habitants.
-- **Équité** : le classement tient compte des zones peu desservies pour ne pas favoriser uniquement les quartiers déjà bien équipés.
+- **Vie privée** : les carreaux INSEE peu peuplés ne doivent pas permettre d'identifier de petits groupes d'habitants.
+- **Équité** : le classement doit tenir compte des zones peu desservies, et pas seulement des quartiers déjà bien équipés.![alt text](architecture.jpg)
