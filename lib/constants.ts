@@ -7,15 +7,15 @@ export const STATION_TYPES: StationType[] = [
 ];
 
 export const STATION_COLORS: Record<StationType, string> = {
-  bus: '#3b82f6',
-  tram: '#22c55e',
+  bus: '#7d8a8a',
+  tram: '#5560c9',
   metro: '#ef4444',
   train: '#0f766e',
-  ferry: '#0ea5e9',
-  bike: '#f59e0b',
+  ferry: '#2b8cbe',
+  bike: '#f2a33a',
   scooter: '#ec4899',
   carsharing: '#a855f7',
-  citiz: '#8b5cf6',
+  citiz: '#32b4b5',
   other: '#6b7280',
 };
 
@@ -65,10 +65,10 @@ export const COVERAGE_LEVEL_LABELS: Record<CoverageLevel, string> = {
 };
 
 export const COVERAGE_LEVEL_COLORS: Record<CoverageLevel, string> = {
-  none: '#ef4444',
+  none: '#ee6352',
   low: '#f59e0b',
-  medium: '#84cc16',
-  high: '#22c55e',
+  medium: '#82d4d5',
+  high: '#20a4b0',
 };
 
 export const BUDGET_SCENARIOS = [100_000, 250_000, 500_000, 1_000_000] as const;
