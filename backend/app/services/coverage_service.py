@@ -73,7 +73,7 @@ def metric_available(ds: Dataset, zones: list[Zone], metric: HeatmapMetric) -> b
     if not ds.accessibility_available:
         return False
     if metric is HeatmapMetric.accessibility_score:
-        return all(z.accessibility_score is not None for z in zones)
+        return all(z.accessibility_score is not None for z in zones or ds.zones)
     return True
 
 

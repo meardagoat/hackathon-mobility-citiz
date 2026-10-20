@@ -297,3 +297,38 @@ def test_gain_mismatch_names_the_scenario_and_rank(tmp_path, caplog):
         load_prepared(tmp_path)
     assert "for 1 of 12 recommendations" in caplog.text
     assert f"tous/100000 rank 2 {RECOMMANDATIONS['id_candidat'][1]}: published 44, reproduced 43" in caplog.text
+
+
+def test_score_bounds_load_and_serialize(client_for, tmp_path):
+    write_gold(tmp_path)
+    rows = [i for i, (p, b) in enumerate(zip(RECOMMANDATIONS["perimetre"], RECOMMANDATIONS["budget_scenario"]))
+            if p == "tous" and b == 100_000]
+    scores = list(RECOMMANDATIONS["score"])
+    scores[rows[0]], scores[rows[1]] = 0.0, 100.0
+    write_table(tmp_path, "recommandations", {**RECOMMANDATIONS, "score": scores})
+    body = _post(client_for(load_prepared(tmp_path)), budget=100_000)
+    assert [r["score"] for r in body["recommendations"][:2]] == [0.0, 100.0]
+
+
+OUTSIDE_COVERAGE = "2.0,48.0,2.1,48.1"
+
+
+def test_empty_bbox_keeps_accessibility_score_unavailable(gold_client):
+    body = _get(gold_client, HEATMAP, HeatmapResponse, metric="accessibility_score", bbox=OUTSIDE_COVERAGE)
+    assert body["metric_available"] is False
+    assert body["points"] == [] and body["value_range"] is None
+    assert _get(gold_client, HEATMAP, HeatmapResponse, metric="accessibility_score")["metric_available"] is False
+
+
+def test_empty_bbox_keeps_accessibility_score_available_when_provided(real_client):
+    body = _get(real_client, HEATMAP, HeatmapResponse, metric="accessibility_score", bbox=OUTSIDE_COVERAGE)
+    assert body["metric_available"] is True
+    assert body["points"] == [] and body["value_range"] is None
+
+
+def test_empty_bbox_lists_only_measured_station_types(gold_client):
+    everywhere = _get(gold_client, POPULATION, PopulationStatsResponse, group_by="station_type")
+    outside = _get(gold_client, POPULATION, PopulationStatsResponse, group_by="station_type", bbox=OUTSIDE_COVERAGE)
+    assert [g["key"] for g in outside["groups"]] == [g["key"] for g in everywhere["groups"]]
+    assert all(g["population"] == 0 and g["zones_count"] == 0 for g in outside["groups"])
+    assert outside["population_total"] == 0

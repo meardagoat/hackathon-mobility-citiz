@@ -125,10 +125,10 @@ def _as_count(value: object, column: str) -> int:
     return int(value)
 
 
-def _as_fraction(value: object, column: str) -> float:
+def _in_range(value: object, column: str, low: float, high: float) -> float:
     number = _as_number(value, column)
-    if not 0 <= number <= 1:
-        raise ValueError(f"'{column}' must be between 0 and 1, got {value!r}")
+    if not low <= number <= high:
+        raise ValueError(f"'{column}' must be between {low} and {high}, got {value!r}")
     return number
 
 
@@ -239,8 +239,8 @@ def _recommendation(row: dict) -> PrecomputedRecommendation:
         cost=_as_count(row["cout_eur"], "cout_eur"),
         cumulative_cost=_as_count(row["cout_cumule_eur"], "cout_cumule_eur"),
         population_gained=_as_count(row["pop_nouvelle"], "pop_nouvelle"),
-        score=_as_number(row["score"], "score"),
-        adequation=_as_fraction(row["adequation"], "adequation"),
+        score=_in_range(row["score"], "score", 0, 100),
+        adequation=_in_range(row["adequation"], "adequation", 0, 1),
         cars_avoided=_as_count(row["voitures_evitees"], "voitures_evitees"),
     )
 

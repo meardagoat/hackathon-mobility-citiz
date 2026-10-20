@@ -198,7 +198,7 @@ class Recommendation(BaseModel):
     cumulative_cost: float = Field(ge=0, description="EUR")
     population_gained: int = Field(ge=0)
     estimated_value: float | None = Field(ge=0)
-    score: float | None = Field(ge=0)
+    score: float | None = Field(ge=0, le=100)
     adequation: float | None = Field(ge=0, le=1)
     cars_avoided: int | None = Field(ge=0)
 

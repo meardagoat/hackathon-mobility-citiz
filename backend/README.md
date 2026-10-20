@@ -344,7 +344,7 @@ Validation au chargement (toute erreur empêche le démarrage, avec le fichier, 
 - `donnee_masquee` qui n'est pas un booléen, `code_commune` qui n'a pas 5 caractères ;
 - type de station ou d'équipement inconnu, colonne `nb_<type>` inconnue ou absente pour un type présent dans `offre_existante`, `nb_options` différent de la somme des `nb_<type>` ;
 - `id_station` sans préfixe `gtfs_` ou `gbfs_`, coordonnées hors WGS84 ;
-- recommandations : périmètre inconnu (`tous`, `citiz`), équipement hors du périmètre, rangs non continus à partir de 1, candidat en double, `cout_cumule_eur` différent du cumul des `cout_eur`, total supérieur à `budget_scenario` ;
+- recommandations : périmètre inconnu (`tous`, `citiz`), équipement hors du périmètre, `score` hors de 0–100 ou `adequation` hors de 0–1 (ou non finis), rangs non continus à partir de 1, candidat en double, `cout_cumule_eur` différent du cumul des `cout_eur`, total supérieur à `budget_scenario` ;
 - `id_candidat` qui n'est pas `<type>_<id_carreau>` ;
 - `date_maj` sans fuseau horaire, `rayon_m` absent, nul ou différent selon les lignes.
 
