@@ -13,7 +13,7 @@ import type { StationType } from '@/types/api';
 
 const MapComponent = dynamic(
   () => import('@/components/map/Map').then((m) => m.Map),
-  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-gray-100"><Spinner label="Chargement de la carte..." /></div> }
+  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-white/5"><Spinner label="Chargement de la carte..." /></div> }
 );
 
 export default function MapPage() {
@@ -43,11 +43,11 @@ export default function MapPage() {
         />
       </div>
 
-      <div className="w-72 bg-white border-l border-gray-200 flex flex-col overflow-y-auto">
-        <div className="px-5 py-4 border-b border-gray-100">
+      <div className="w-72 bg-night-2 border-l border-white/10 flex flex-col overflow-y-auto">
+        <div className="px-5 py-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Layers size={16} className="text-blue-500" />
-            <h2 className="text-sm font-semibold text-gray-900">Filtres et couches</h2>
+            <Layers size={16} className="text-volt" />
+            <h2 className="text-sm font-semibold text-ink">Filtres et couches</h2>
           </div>
           {meta && <div className="mt-2"><DataModeNotice meta={meta} /></div>}
         </div>
@@ -66,32 +66,32 @@ export default function MapPage() {
           )}
 
           <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Couches</p>
+            <p className="text-sm font-medium text-ink mb-2">Couches</p>
             <button
               type="button"
               onClick={() => setShowHeatmap(!showHeatmap)}
-              className="flex items-center gap-2 w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 w-full p-3 rounded-lg border border-white/10 hover:bg-white/5 transition-colors"
             >
-              {showHeatmap ? <Eye size={14} className="text-blue-500" /> : <EyeOff size={14} className="text-gray-400" />}
-              <span className="text-sm text-gray-700">Population par carreau</span>
+              {showHeatmap ? <Eye size={14} className="text-volt" /> : <EyeOff size={14} className="text-ink-dim/70" />}
+              <span className="text-sm text-ink">Population par carreau</span>
             </button>
           </div>
 
-          <div className="border-t border-gray-100 pt-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Statistiques</p>
+          <div className="border-t border-white/10 pt-4">
+            <p className="text-xs font-semibold text-ink-dim uppercase tracking-wider mb-3">Statistiques</p>
             {stations.loading ? (
               <Spinner size="sm" />
             ) : stations.data ? (
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Stations visibles</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-ink-dim">Stations visibles</span>
+                  <span className="font-semibold text-ink">
                     {formatNumber(features.filter((s) => visibleTypes.includes(s.properties.type)).length)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total stations</span>
-                  <span className="font-semibold text-gray-900">{formatNumber(stations.data.meta.total_features)}</span>
+                  <span className="text-ink-dim">Total stations</span>
+                  <span className="font-semibold text-ink">{formatNumber(stations.data.meta.total_features)}</span>
                 </div>
                 {stations.data.meta.truncated && (
                   <p className="text-xs text-amber-600">

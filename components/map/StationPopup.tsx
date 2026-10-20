@@ -11,8 +11,8 @@ export function StationPopup({ station }: { station: StationProperties }) {
       <div className="flex items-center gap-2 mb-2">
         <span className="text-lg">{STATION_ICONS[station.type]}</span>
         <div>
-          <p className="font-semibold text-gray-900 text-sm">{station.name}</p>
-          <p className="text-xs text-gray-500">{station.operator}</p>
+          <p className="font-semibold text-ink text-sm">{station.name}</p>
+          <p className="text-xs text-ink-dim">{station.operator}</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1 mb-2">
@@ -22,7 +22,7 @@ export function StationPopup({ station }: { station: StationProperties }) {
           </Badge>
         ))}
       </div>
-      <div className="text-xs text-gray-600 space-y-1">
+      <div className="text-xs text-ink-dim space-y-1">
         <p>{formatNumber(station.population_served)} habitants à 400 m (carreaux non masqués)</p>
         {station.capacity !== null && <p>Capacité : {formatNumber(station.capacity)}</p>}
       </div>

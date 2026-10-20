@@ -44,18 +44,18 @@ export function Map({
       </MapContainer>
 
       {showLegend && (
-        <div className="absolute bottom-6 left-4 z-[1000] bg-white rounded-xl p-3 shadow-md border border-gray-100">
-          <p className="text-xs font-semibold text-gray-700 mb-2">Habitants par carreau de 200 m</p>
+        <div className="absolute bottom-6 left-4 z-[1000] bg-night-2 rounded-xl p-3 shadow-md border border-white/10">
+          <p className="text-xs font-semibold text-ink mb-2">Habitants par carreau de 200 m</p>
           {[0.8, 0.6, 0.4, 0.2, 0].map((ratio) => (
             <div key={ratio} className="flex items-center gap-2 mb-1">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: intensityColor(ratio) }} />
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-ink-dim">
                 {ratio === 0 ? `moins de ${Math.round(0.2 * (heatmap.value_range?.max ?? 0))}` : `${Math.round(ratio * (heatmap.value_range?.max ?? 0))} et plus`}
               </span>
             </div>
           ))}
           {heatmap.masked_zones_count > 0 && (
-            <p className="mt-1 text-[10px] text-gray-400">{heatmap.masked_zones_count} carreaux masqués non affichés</p>
+            <p className="mt-1 text-[10px] text-ink-dim/70">{heatmap.masked_zones_count} carreaux masqués non affichés</p>
           )}
         </div>
       )}

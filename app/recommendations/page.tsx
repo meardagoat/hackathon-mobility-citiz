@@ -11,7 +11,7 @@ import type { Recommendation, RecommendationRequest, RecommendationResponse } fr
 
 const PointMap = dynamic(
   () => import('@/components/map/PointMap').then((m) => m.PointMap),
-  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-gray-100"><Spinner /></div> }
+  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-white/5"><Spinner /></div> }
 );
 
 export default function RecommendationsPage() {
@@ -35,13 +35,13 @@ export default function RecommendationsPage() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <div className="w-96 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
-        <div className="px-6 py-5 border-b border-gray-100">
+      <div className="w-96 flex-shrink-0 bg-night-2 border-r border-white/10 flex flex-col">
+        <div className="px-6 py-5 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Lightbulb size={18} className="text-blue-500" />
-            <h1 className="text-base font-semibold text-gray-900">Recommandations</h1>
+            <Lightbulb size={18} className="text-volt" />
+            <h1 className="text-base font-semibold text-ink">Recommandations</h1>
           </div>
-          <p className="text-xs text-gray-500 mt-1">Emplacements prioritaires sous contrainte de budget</p>
+          <p className="text-xs text-ink-dim mt-1">Emplacements prioritaires sous contrainte de budget</p>
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {error && <ErrorState message={`Recommandations indisponibles : ${error}`} />}
@@ -57,7 +57,7 @@ export default function RecommendationsPage() {
         ) : result ? (
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-gray-900">
+              <h2 className="text-sm font-semibold text-ink">
                 {result.recommendations.length} recommandation{result.recommendations.length > 1 ? 's' : ''}
                 {result.perimeter && ` — ${PERIMETERS[result.perimeter].label}`}
               </h2>
@@ -67,9 +67,9 @@ export default function RecommendationsPage() {
             <RecommendationsList recommendations={result.recommendations} onViewOnMap={setMapRec} />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+          <div className="flex-1 flex flex-col items-center justify-center text-ink-dim/70">
             <Lightbulb size={48} className="mb-4 text-gray-200" />
-            <p className="text-base font-medium text-gray-500">Choisissez un budget et un périmètre</p>
+            <p className="text-base font-medium text-ink-dim">Choisissez un budget et un périmètre</p>
           </div>
         )}
       </div>
@@ -78,8 +78,8 @@ export default function RecommendationsPage() {
         {mapRec && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <MapPin size={14} className="text-gray-400" />
-              <p className="text-sm text-gray-600">
+              <MapPin size={14} className="text-ink-dim/70" />
+              <p className="text-sm text-ink-dim">
                 #{mapRec.rank} {EQUIPMENT_LABELS[mapRec.equipment_type]}, commune INSEE {mapRec.commune_code}
               </p>
             </div>

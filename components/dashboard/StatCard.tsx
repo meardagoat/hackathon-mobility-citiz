@@ -18,9 +18,9 @@ export function StatCard({ title, value, subtitle, icon, trend, color = '#3b82f6
     <Card className={cn('relative overflow-hidden', className)}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-500 font-medium truncate">{title}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900 truncate">{value}</p>
-          {subtitle && <p className="mt-0.5 text-xs text-gray-400">{subtitle}</p>}
+          <p className="text-sm text-ink-dim font-medium truncate">{title}</p>
+          <p className="mt-1 text-2xl font-bold text-ink truncate">{value}</p>
+          {subtitle && <p className="mt-0.5 text-xs text-ink-dim/70">{subtitle}</p>}
           {trend && (
             <div className={cn('mt-2 flex items-center gap-1 text-xs font-medium', trend.value >= 0 ? 'text-green-600' : 'text-red-600')}>
               {trend.value >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
