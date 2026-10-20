@@ -109,8 +109,9 @@ def _by_coverage_level(ds: Dataset, zones: list[Zone], total: int) -> list[Popul
     ]
 
 
-def _by_station_type(zones: list[Zone], total: int) -> list[PopulationGroup]:
-    present = [t for t in StationType if all(z.options_by_type and t in z.options_by_type for z in zones)]
+def _by_station_type(ds: Dataset, zones: list[Zone], total: int) -> list[PopulationGroup]:
+    measured = zones or ds.zones
+    present = [t for t in StationType if all(z.options_by_type and t in z.options_by_type for z in measured)]
     return [_group(t.value, [z for z in zones if z.options_by_type[t] > 0], total) for t in present]
 
 
@@ -127,7 +128,7 @@ def get_population_stats(
         groups = _by_coverage_level(ds, zones, total) if available else []
     else:
         available = station_types_available(ds)
-        groups = _by_station_type(zones, total) if available else []
+        groups = _by_station_type(ds, zones, total) if available else []
 
     return PopulationStatsResponse(
         meta=build_meta(ds, area),

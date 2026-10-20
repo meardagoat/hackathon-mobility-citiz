@@ -268,6 +268,10 @@ def test_duplicate_candidate_in_scenario_is_an_error(data_dir):
         ("perimetre", "velo", "'velo' is not a valid Perimeter"),
         ("type", "tram", "unknown equipment type 'tram'"),
         ("adequation", 1.5, "'adequation' must be between 0 and 1"),
+        ("score", -1.0, "'score' must be between 0 and 100"),
+        ("score", 100.5, "'score' must be between 0 and 100"),
+        ("score", float("nan"), "'score' must be a finite number"),
+        ("score", float("inf"), "'score' must be a finite number"),
         ("cout_eur", 34_000.5, "'cout_eur' must be a non-negative integer"),
     ],
 )
