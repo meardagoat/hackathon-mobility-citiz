@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 
-from .common import get_json, now_utc, pan_catalog, raw_dir, save_json, write_table
+from .common import get_json, now_utc, pan_catalog, raw_dir, reprendre_precedent, save_json, write_table
 
 FLUX_UTILES = ["system_information", "station_information", "station_status",
                "vehicle_types", "free_bike_status", "vehicle_status"]
@@ -30,6 +30,10 @@ TYPES_HISTORIQUES = {
     "vehicules_disponibles": "float64", "places_disponibles": "float64", "lat": "float64", "lon": "float64",
     "est_installee": "boolean", "est_en_location": "boolean", "est_reserve": "boolean", "est_indisponible": "boolean",
 }
+# Sous-flux décrivant l'offre (stations, types) : s'il échoue, les données précédentes sont conservées.
+TABLE_DU_FLUX = {"station_information": "stations", "vehicle_types": "types"}
+CLES_LIGNE = {"stations": ["ressource_id", "systeme_id", "station_id"],
+              "types": ["ressource_id", "systeme_id", "vehicle_type_id"]}
 BOOLEENS = {True: True, False: False, 1: True, 0: False, "true": True, "false": False, "True": True,
             "False": False, "1": True, "0": False}
 
@@ -143,6 +147,7 @@ def _telecharger_systeme(url: str, dossier, res: dict, manifestes: bool) -> list
                 return _telecharger_systeme(versions[-1]["url"], dossier / str(ds.get("system_id", i)), res, manifestes)
             except Exception as e:
                 res["erreurs"].append(f"{ds.get('system_id')}: {e}")
+                res["tables_en_echec"].update(("stations", "types"))
                 return []
 
         with ThreadPoolExecutor(max_workers=16) as pool:
@@ -160,6 +165,8 @@ def _telecharger_systeme(url: str, dossier, res: dict, manifestes: bool) -> list
                 save_json(contenu[nom], dossier / f"{nom}.json")
             except Exception as e:  # un flux secondaire en erreur ne bloque pas les autres
                 res["erreurs"].append(f"{nom}: {e}")
+                if nom in TABLE_DU_FLUX:  # ses données précédentes seront conservées
+                    res["tables_en_echec"].add(TABLE_DU_FLUX[nom])
     return [contenu]
 
 
@@ -220,7 +227,7 @@ def _extraire(contenu: dict, flux: dict, horodatage: str, res: dict) -> None:
 
 def _collecter_flux(flux: dict, horodatage: str, manifestes: bool) -> dict:
     dossier = raw_dir() / "gbfs" / re.sub(r"[^\w-]", "_", f"{flux['jeu_slug']}_{flux['ressource_id']}")
-    res = {"statut": "ok", "version": None, "erreurs": [],
+    res = {"statut": "ok", "version": None, "erreurs": [], "tables_en_echec": set(),
            "stations": [], "etats": [], "vehicules": [], "types": []}
     try:
         for contenu in _telecharger_systeme(flux["url"], dossier, res, manifestes):
@@ -251,11 +258,15 @@ def collecter(seulement_citiz: bool = False, manifestes: bool = False, workers: 
         nb_vehicules=[len(r["vehicules"]) for r in resultats],
         date_collecte=horodatage,
     )
-    tables = {
-        "gbfs_flux": flux,
-        "gbfs_stations": pd.DataFrame([x for r in resultats for x in r["stations"]]),
-        "gbfs_types_vehicules": pd.DataFrame([x for r in resultats for x in r["types"]]),
-    }
+    # un flux en erreur garde ses stations et types de véhicules de la collecte précédente
+    # (pas de photo inventée pour les historiques : il n'y apparaît simplement pas)
+    repris, tables = set(), {"gbfs_flux": flux}
+    for nom, cle in (("gbfs_stations", "stations"), ("gbfs_types_vehicules", "types")):
+        echecs = [f for f, r in zip(flux["ressource_id"], resultats) if r["statut"] != "ok" or cle in r["tables_en_echec"]]
+        tables[nom], ids = reprendre_precedent(pd.DataFrame([x for r in resultats for x in r[cle]]), nom, echecs,
+                                               cles_ligne=CLES_LIGNE[cle])
+        repris |= ids
+    flux["donnees_precedentes"] = flux["ressource_id"].astype(str).isin(repris)
     historiques = {
         "gbfs_etat_stations": _typer(pd.DataFrame([x for r in resultats for x in r["etats"]])),
         "gbfs_vehicules": _typer(pd.DataFrame([x for r in resultats for x in r["vehicules"]])),

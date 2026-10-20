@@ -21,12 +21,14 @@ import zipfile
 
 import pandas as pd
 
-from .common import download, get_json, now_utc, pan_catalog, raw_dir, write_table
+from .common import download, get_json, now_utc, pan_catalog, raw_dir, reprendre_precedent, write_table
 
 ARRETS_FRANCE_DATASET = "https://www.data.gouv.fr/api/1/datasets/arrets-de-transport-en-france/"
 # Zone d'étude retenue : Bordeaux Métropole (TBM) + réseaux de Gironde pour le périurbain
 ZONE_BORDEAUX = ["Bordeaux Métropole", "Gironde", "Aéroport de Bordeaux"]
 FICHIERS_GTFS = ["agency", "routes", "stops", "trips", "calendar", "calendar_dates", "stop_times"]
+# Sans ces fichiers, un réseau publierait des arrêts sans lignes ni courses : il est traité comme un échec.
+FICHIERS_REQUIS = ["routes", "stops", "trips", "stop_times"]
 
 
 def catalogue() -> pd.DataFrame:
@@ -85,11 +87,14 @@ def arrets_france(force: bool = False, cat: pd.DataFrame | None = None) -> pd.Da
     return df
 
 
-def selectionner(cat: pd.DataFrame, zone: list[str], exclure_agregats: bool = True) -> pd.DataFrame:
+def selectionner(cat: pd.DataFrame, zone: list[str], exclure_agregats: bool = True,
+                 seulement_disponibles: bool = True) -> pd.DataFrame:
     """Filtre le catalogue sur des mots-clés (nom de zone, de réseau, titre ou code INSEE).
     zone = ["*"] sélectionne tous les GTFS de France.
-    exclure_agregats : écarte les agrégats régionaux, qui dupliquent les réseaux locaux."""
-    cat = cat[cat["disponible"].astype("boolean").fillna(False).astype(bool)]
+    exclure_agregats : écarte les agrégats régionaux, qui dupliquent les réseaux locaux.
+    seulement_disponibles=False : garde aussi les GTFS de la zone signalés indisponibles."""
+    if seulement_disponibles:
+        cat = cat[cat["disponible"].astype("boolean").fillna(False).astype(bool)]
     if exclure_agregats:
         cat = cat[~cat["jeu_titre"].str.lower().str.startswith("agrégat")]
     if zone == ["*"]:
@@ -104,9 +109,14 @@ def selectionner(cat: pd.DataFrame, zone: list[str], exclure_agregats: bool = Tr
 
 def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = True, force: bool = False,
                   exclure_agregats: bool = True) -> None:
-    choix = selectionner(cat, zone, exclure_agregats)
-    print(f"  {len(choix)} GTFS sélectionnés pour la zone {zone}")
+    zone_complete = selectionner(cat, zone, exclure_agregats, seulement_disponibles=False)
+    disponible = zone_complete["disponible"].astype("boolean").fillna(False).astype(bool)
+    choix, indisponibles = zone_complete[disponible], zone_complete[~disponible]
+    print(f"  {len(choix)} GTFS sélectionnés pour la zone {zone} ({len(indisponibles)} indisponibles)")
+    if zone_complete.empty:  # sinon toutes les tables de la zone seraient supprimées au chargement
+        raise ValueError(f"Aucun GTFS ne correspond à la zone {zone} : vérifier le paramètre ZONE")
     fichiers = FICHIERS_GTFS if avec_stop_times else [f for f in FICHIERS_GTFS if f != "stop_times"]
+    requis = [f for f in FICHIERS_REQUIS if f in fichiers]
     morceaux = {f: [] for f in fichiers}
     statuts = []
     for r in choix.to_dict("records"):
@@ -123,6 +133,9 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
                         df.insert(0, "ressource_id", str(r["ressource_id"]))
                         df.insert(1, "jeu_titre", r["jeu_titre"])
                         lus[f] = df
+            manquants = [f"{f}.txt" for f in requis if f not in lus]
+            if manquants:
+                raise ValueError(f"fichiers absents : {', '.join(manquants)}")
             statut = "ok"
         except Exception as e:
             print(f"  ! {r['jeu_titre']} ({r['ressource_id']}) ignoré : {e}")
@@ -133,16 +146,27 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
         statuts.append({"ressource_id": str(r["ressource_id"]), "jeu_titre": r["jeu_titre"], "url": r["url"],
                         "licence": r.get("licence"), "mise_a_jour": r.get("mise_a_jour"), "statut": statut, "fichiers": ",".join(lus),
                         "nb_arrets": len(lus["stops"]) if "stops" in lus else None})
+    # GTFS de la zone signalé indisponible sur le PAN : traité comme un échec (données précédentes conservées)
+    for r in indisponibles.to_dict("records"):
+        statuts.append({"ressource_id": str(r["ressource_id"]), "jeu_titre": r["jeu_titre"], "url": r["url"],
+                        "licence": r.get("licence"), "mise_a_jour": r.get("mise_a_jour"),
+                        "statut": "indisponible sur le Point d'Accès National", "fichiers": "", "nb_arrets": None})
     horodatage = now_utc()
-    colonnes = ["ressource_id", "jeu_titre", "url", "licence", "mise_a_jour", "statut", "fichiers", "nb_arrets"]
-    write_table(pd.DataFrame(statuts, columns=colonnes).assign(date_collecte=horodatage), "gtfs_ressources")
+    # un GTFS illisible ou indisponible garde ses données de la collecte précédente au lieu de disparaître des tables
+    echecs, repris = [st["ressource_id"] for st in statuts if st["statut"] != "ok"], set()
     for f, dfs in morceaux.items():
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True).assign(date_collecte=horodatage)
+        df = pd.concat(dfs, ignore_index=True).assign(date_collecte=horodatage) if dfs else pd.DataFrame()
+        df, ids = reprendre_precedent(df, f"gtfs_{f}", echecs)
+        repris |= ids
+        if dfs or len(df):  # fichier lu (même vide) ou repris ; un fichier absent partout n'est pas écrit
             for col in ("stop_lat", "stop_lon"):
                 if col in df:
                     df[col] = pd.to_numeric(df[col], errors="coerce")
             write_table(df, f"gtfs_{f}")
+    colonnes = ["ressource_id", "jeu_titre", "url", "licence", "mise_a_jour", "statut", "fichiers", "nb_arrets"]
+    ressources = pd.DataFrame(statuts, columns=colonnes)
+    ressources["donnees_precedentes"] = ressources["ressource_id"].isin(repris)
+    write_table(ressources.assign(date_collecte=horodatage), "gtfs_ressources")
 
 
 def collecter(zone: list[str], avec_stop_times: bool = True, force: bool = False,
