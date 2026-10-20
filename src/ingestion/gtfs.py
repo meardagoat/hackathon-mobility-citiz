@@ -44,6 +44,7 @@ def catalogue() -> pd.DataFrame:
                 "jeu_slug": ds["slug"],
                 "jeu_titre": ds["title"],
                 "producteur": (ds.get("publisher") or {}).get("name"),
+                "licence": ds.get("licence"),
                 "zones_couvertes": " | ".join(z.get("nom", "") for z in zones),
                 "zones_insee": " | ".join(str(z.get("insee", "")) for z in zones),
                 "types_zones": " | ".join(z.get("type", "") for z in zones),
@@ -53,6 +54,7 @@ def catalogue() -> pd.DataFrame:
                 "reseaux": ",".join(meta.get("networks") or []),
                 "date_fin_validite": meta.get("end_date"),
                 "disponible": r.get("is_available"),
+                "mise_a_jour": r.get("updated"),
                 "url": r.get("url"),
                 "page_pan": ds.get("page_url"),
             })
@@ -62,16 +64,22 @@ def catalogue() -> pd.DataFrame:
     return df
 
 
-def arrets_france(force: bool = False) -> pd.DataFrame:
-    """Agrégat national de tous les arrêts GTFS (dernière version publiée sur data.gouv.fr)."""
+def arrets_france(force: bool = False, cat: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Agrégat national de tous les arrêts GTFS (dernière version publiée sur data.gouv.fr).
+    cat : catalogue GTFS, pour indiquer la licence du réseau d'origine de chaque arrêt."""
     meta = get_json(ARRETS_FRANCE_DATASET)
     ressource = next(r for r in meta["resources"] if r["format"] == "csv")
     print(f"  agrégat national : {ressource['title']}")
-    chemin = download(ressource["url"], raw_dir() / "gtfs" / "arrets_france.csv", force=force)
+    # empreinte publiée par data.gouv.fr : un nouvel export remplace le fichier en cache
+    version = (ressource.get("checksum") or {}).get("value") or ressource.get("last_modified")
+    chemin = download(ressource["url"], raw_dir() / "gtfs" / "arrets_france.csv", force=force, version=version)
     df = pd.read_csv(chemin, dtype=str, low_memory=False)
     for col in ("stop_lat", "stop_lon"):
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df["fichier_source"] = ressource["title"]
+    if cat is not None:  # licence propre à chaque réseau (Licence Ouverte, ODbL…), absente si le GTFS a été retiré
+        licences = dict(zip(cat["ressource_id"].astype(str), cat["licence"]))
+        df["licence_reseau"] = df["resource_id"].map(licences)
     df["date_collecte"] = now_utc()
     write_table(df, "gtfs_arrets_france")
     return df
@@ -105,7 +113,7 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
         zip_path = raw_dir() / "gtfs" / "zips" / f"{r['jeu_slug']}_{r['ressource_id']}.zip"
         lus = {}
         try:
-            download(r["url"], zip_path, force=force)
+            download(r["url"], zip_path, force=force, version=r.get("mise_a_jour"))
             with zipfile.ZipFile(zip_path) as z:
                 noms = {n.split("/")[-1]: n for n in z.namelist()}
                 for f in fichiers:
@@ -123,10 +131,10 @@ def gtfs_complets(cat: pd.DataFrame, zone: list[str], avec_stop_times: bool = Tr
         for f, df in lus.items():
             morceaux[f].append(df)
         statuts.append({"ressource_id": str(r["ressource_id"]), "jeu_titre": r["jeu_titre"], "url": r["url"],
-                        "statut": statut, "fichiers": ",".join(lus),
+                        "licence": r.get("licence"), "mise_a_jour": r.get("mise_a_jour"), "statut": statut, "fichiers": ",".join(lus),
                         "nb_arrets": len(lus["stops"]) if "stops" in lus else None})
     horodatage = now_utc()
-    colonnes = ["ressource_id", "jeu_titre", "url", "statut", "fichiers", "nb_arrets"]
+    colonnes = ["ressource_id", "jeu_titre", "url", "licence", "mise_a_jour", "statut", "fichiers", "nb_arrets"]
     write_table(pd.DataFrame(statuts, columns=colonnes).assign(date_collecte=horodatage), "gtfs_ressources")
     for f, dfs in morceaux.items():
         if dfs:
@@ -141,7 +149,7 @@ def collecter(zone: list[str], avec_stop_times: bool = True, force: bool = False
               exclure_agregats: bool = True) -> None:
     print("GTFS - transports en commun")
     cat = catalogue()
-    arrets_france(force=force)
+    arrets_france(force=force, cat=cat)
     gtfs_complets(cat, zone, avec_stop_times=avec_stop_times, force=force, exclure_agregats=exclure_agregats)
 
 
