@@ -193,36 +193,44 @@ export function transformHeatMap(carreaux: any[]) {
 /**
  * Transforme une recommandation backend en Recommendation frontend
  * 
- * Backend (DATA-CONTRACT.md recommandations) :
- * - rang, id_candidat, type, lat, lon, code_commune
- * - cout_eur, cout_cumule_eur, pop_nouvelle
- * - score, adequation, voitures_evitees
+ * Backend (format API v1.1) :
+ * - rank, location_id, equipment_type, lat, lon
+ * - cost, cumulative_cost, population_gained
+ * - score, adequation, cars_avoided
  */
 export function transformRecommendation(reco: any): Recommendation {
+  // Mapping equipment_type → TransportType
+  const typeMapping: Record<string, TransportType> = {
+    'citiz_station': 'carsharing',
+    'bike_station': 'bike',
+    'bus_stop': 'bus',
+    'tram_stop': 'tram',
+  };
+  
   return {
-    id: reco.id_candidat,
-    rank: reco.rang,
+    id: reco.location_id || reco.id_candidat || `rec_${reco.rank}`,
+    rank: reco.rank || reco.rang,
     location: {
       type: 'Point',
       coordinates: [reco.lon, reco.lat],
     },
-    address: `${reco.code_commune || 'Bordeaux'}`, // Adresse simplifiée
-    transport_type: mapTransportType(reco.type),
-    estimated_cost: reco.cout_eur,
+    address: reco.commune_code ? `Code commune: ${reco.commune_code}` : 'Bordeaux', // Adresse simplifiée
+    transport_type: typeMapping[reco.equipment_type] || mapTransportType(reco.type || 'citiz'),
+    estimated_cost: reco.cost || reco.cout_eur || 0,
     impact: {
-      new_population_served: reco.pop_nouvelle,
-      coverage_improvement: (reco.pop_nouvelle / 400000) || 0.01, // Approximation
+      new_population_served: reco.population_gained || reco.pop_nouvelle || 0,
+      coverage_improvement: ((reco.population_gained || 0) / 400000) || 0.01, // Approximation
       existing_coverage: 0.5, // À calculer si disponible
-      projected_coverage: 0.5 + ((reco.pop_nouvelle / 400000) || 0.01),
+      projected_coverage: 0.5 + (((reco.population_gained || 0) / 400000) || 0.01),
     },
-    justification: `Score d'adéquation : ${(reco.adequation * 100).toFixed(0)}%. ${
-      reco.voitures_evitees > 0 ? `Estimation : ${reco.voitures_evitees} voitures évitées.` : ''
+    justification: `Score d'adéquation : ${((reco.adequation || 0) * 100).toFixed(0)}%. ${
+      (reco.cars_avoided || 0) > 0 ? `Estimation : ${reco.cars_avoided} voitures évitées.` : ''
     }`,
-    score: reco.score / 100, // Backend 0-100, frontend 0-1
+    score: (reco.score || 0) / 100, // Backend 0-100, frontend 0-1
     nearby_facilities: {
       metro_stations: 0,
       bus_stops: 0,
-      residential_density: reco.pop_nouvelle > 3000 ? 'high' : reco.pop_nouvelle > 1000 ? 'medium' : 'low',
+      residential_density: (reco.population_gained || 0) > 3000 ? 'high' : (reco.population_gained || 0) > 1000 ? 'medium' : 'low',
     },
   };
 }
@@ -236,10 +244,10 @@ export function transformRecommendations(recommendations: any[]) {
   // Calculer le résumé
   const summary = {
     total_recommendations: transformed.length,
-    total_cost: recommendations.reduce((sum, r) => sum + r.cout_eur, 0),
-    total_new_population: recommendations.reduce((sum, r) => sum + r.pop_nouvelle, 0),
-    avg_coverage_improvement: transformed.reduce((sum, r) => sum + r.impact.coverage_improvement, 0) / transformed.length,
-    budget_used: recommendations[recommendations.length - 1]?.cout_cumule_eur || 0,
+    total_cost: recommendations.reduce((sum, r) => sum + (r.cost || r.cout_eur || 0), 0),
+    total_new_population: recommendations.reduce((sum, r) => sum + (r.population_gained || r.pop_nouvelle || 0), 0),
+    avg_coverage_improvement: transformed.reduce((sum, r) => sum + r.impact.coverage_improvement, 0) / (transformed.length || 1),
+    budget_used: recommendations[recommendations.length - 1]?.cumulative_cost || recommendations[recommendations.length - 1]?.cout_cumule_eur || 0,
     budget_remaining: 0, // À calculer depuis le budget demandé
   };
   

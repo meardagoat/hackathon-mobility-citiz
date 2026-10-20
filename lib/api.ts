@@ -112,8 +112,15 @@ export const api = {
       { params }
     );
     
-    // Transformer les carreaux backend en zones frontend
-    const carreaux = response.data.data?.carreaux || response.data.carreaux || response.data || [];
+    // Le backend renvoie un GeoJSON FeatureCollection
+    // Extraire les features (carreaux)
+    const features = response.data.features || [];
+    const carreaux = features.map((f: any) => ({
+      ...f.properties,
+      lat: f.geometry?.coordinates?.[1],
+      lon: f.geometry?.coordinates?.[0],
+    }));
+    
     const zones = dataTransformers.zones(carreaux);
     
     return {
@@ -128,17 +135,42 @@ export const api = {
 
   /**
    * Obtenir les données de heat map
-   * Transforme les carreaux en features GeoJSON pour la heat map
+   * Transforme les points backend en GeoJSON FeatureCollection
    */
   async getHeatMap(params?: HeatMapParams): Promise<HeatMapResponse> {
     const response = await apiClient.get<any>(
       '/mobility/heatmap',
-      { params }
+      { params: { area: params?.region || 'bordeaux_metropole', ...params } }
     );
     
-    // Transformer les carreaux en heat map
-    const carreaux = response.data.data?.carreaux || response.data.carreaux || response.data || [];
-    return dataTransformers.heatMap(carreaux);
+    // Le backend renvoie { points: [[lon, lat, value], ...] }
+    const points = response.data.points || [];
+    const valueRange = response.data.value_range || { min: 0, max: 1 };
+    
+    // Transformer en GeoJSON FeatureCollection
+    const features = points.map((point: any[]) => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [point[0], point[1]], // [lon, lat]
+      },
+      properties: {
+        intensity: valueRange.max > 0 ? point[2] / valueRange.max : 0, // Normaliser 0-1
+        population: point[2],
+        transport_options: 0, // Pas dans les données backend
+      },
+    }));
+    
+    return {
+      type: 'FeatureCollection',
+      features,
+      legend: {
+        min: 0,
+        max: 1,
+        colors: ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#3b82f6'],
+        labels: ['Très faible', 'Faible', 'Moyen', 'Bon', 'Excellent'],
+      },
+    };
   },
 
   /**
@@ -165,8 +197,14 @@ export const api = {
       { params }
     );
     
-    // Transformer offre_existante en stations
-    const rawStations = response.data.data?.stations || response.data.stations || response.data || [];
+    // Le backend renvoie un GeoJSON FeatureCollection
+    const features = response.data.features || [];
+    const rawStations = features.map((f: any) => ({
+      ...f.properties,
+      lat: f.geometry?.coordinates?.[1],
+      lon: f.geometry?.coordinates?.[0],
+    }));
+    
     const stations = dataTransformers.stations(rawStations);
     
     return {
@@ -284,8 +322,9 @@ export const api = {
       request
     );
     
-    // Transformer les recommandations
-    const rawRecommendations = response.data.data?.recommendations || response.data.recommendations || response.data || [];
+    // Le backend renvoie un objet avec recommendations array
+    const rawRecommendations = response.data.recommendations || [];
+    
     return dataTransformers.recommendations(rawRecommendations);
   },
 

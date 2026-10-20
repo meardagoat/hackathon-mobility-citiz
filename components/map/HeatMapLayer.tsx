@@ -17,6 +17,11 @@ interface HeatMapLayerProps {
 }
 
 export function HeatMapLayer({ data }: HeatMapLayerProps) {
+  // Vérifier que data et features existent
+  if (!data || !data.features || !Array.isArray(data.features)) {
+    return null;
+  }
+
   return (
     <>
       {data.features.map((feature, i) => (

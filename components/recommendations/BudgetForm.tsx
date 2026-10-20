@@ -24,7 +24,7 @@ export function BudgetForm({ onSubmit, loading = false }: BudgetFormProps) {
     e.preventDefault();
     onSubmit({
       region,
-      budget,
+      budget, // Déjà correct, correspond au champ 'budget' attendu par le backend
       transport_types: transportTypes,
       constraints: { min_population: minPopulation, prioritize: priority },
       cost_estimates: DEFAULT_COST_ESTIMATES,
