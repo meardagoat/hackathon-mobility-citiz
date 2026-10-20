@@ -1,15 +1,19 @@
 'use client';
 import React from 'react';
-import { Users, MapPin, TrendingUp, Activity } from 'lucide-react';
+import { Users, MapPin, Footprints, Car } from 'lucide-react';
 import { Spinner } from '@/components/ui';
-import { StatCard, PopulationChart, StationsPieChart, CoverageMap } from '@/components/dashboard';
-import { useStatistics } from '@/hooks/useStatistics';
+import { StatCard, PopulationChart, StationsPieChart } from '@/components/dashboard';
+import { DataModeNotice, EmptyState, ErrorState } from '@/components/DataStatus';
+import { useSummary, usePopulation } from '@/hooks/useStatistics';
+import { COVERAGE_LEVEL_COLORS, COVERAGE_LEVEL_LABELS, DEFAULT_AREA } from '@/lib/constants';
 import { formatNumber, formatPercent } from '@/lib/utils';
+import type { CoverageLevel } from '@/types/api';
 
 export default function DashboardPage() {
-  const { summary, population, loading, error } = useStatistics();
+  const summary = useSummary(DEFAULT_AREA);
+  const levels = usePopulation(DEFAULT_AREA, 'coverage_level');
 
-  if (loading) {
+  if (summary.loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Spinner size="lg" label="Chargement des données..." />
@@ -17,80 +21,81 @@ export default function DashboardPage() {
     );
   }
 
-  if (!summary || !population) return null;
+  if (summary.error || !summary.data) {
+    return (
+      <div className="p-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Mobilité</h1>
+        <ErrorState message={`Statistiques indisponibles : ${summary.error ?? 'réponse vide'}`} />
+      </div>
+    );
+  }
+
+  const s = summary.data;
 
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Mobilité</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {summary.region} — Données en temps réel
-          {error && <span className="ml-2 text-yellow-600 text-xs">⚠ {error}</span>}
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <span className="text-sm text-gray-500">Bordeaux Métropole</span>
+          <DataModeNotice meta={s.meta} />
+        </div>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard
-          title="Population couverte"
-          value={formatNumber(summary.population.covered)}
-          subtitle={`sur ${formatNumber(summary.population.total)} habitants`}
+          title="Population"
+          value={formatNumber(s.population_total)}
+          subtitle={`${formatNumber(s.zones_count)} carreaux, dont ${formatNumber(s.masked_zones_count)} masqués (non comptés)`}
           icon={<Users size={20} />}
-          trend={{value: 2.4, label: 'vs mois dernier'}}
           color="#3b82f6"
         />
         <StatCard
-          title="Stations actives"
-          value={summary.stations.total.toLocaleString('fr-FR')}
-          subtitle="tous types confondus"
+          title="Arrêts et stations"
+          value={formatNumber(s.stations_count)}
+          subtitle="offre existante"
           icon={<MapPin size={20} />}
           color="#8b5cf6"
         />
         <StatCard
-          title="Taux de couverture"
-          value={formatPercent(summary.population.coverage_rate)}
-          subtitle="de la population"
-          icon={<TrendingUp size={20} />}
-          trend={{value: 1.1, label: 'vs trimestre'}}
+          title="Option à 400 m"
+          value={formatPercent(s.population_with_any_option_share)}
+          subtitle={`${formatNumber(s.population_with_any_option)} habitants`}
+          icon={<Footprints size={20} />}
           color="#22c55e"
         />
         <StatCard
-          title="Options / habitant"
-          value={summary.avg_options_per_inhabitant.toFixed(3)}
-          subtitle={`Temps moyen : ${summary.avg_walking_time_minutes} min`}
-          icon={<Activity size={20} />}
+          title="Citiz à 400 m"
+          value={formatPercent(s.citiz.population_within_5min_share)}
+          subtitle={`${formatNumber(s.citiz.stations_count)} stations Citiz`}
+          icon={<Car size={20} />}
           color="#f59e0b"
         />
       </div>
 
-      {/* Graphiques */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-        <PopulationChart data={population.distribution} />
-        <StationsPieChart byType={summary.stations.by_type} />
-      </div>
-
-      {/* Carte de couverture par région */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-1">
-          <CoverageMap byRegion={population.by_region} />
-        </div>
-        <div className="xl:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-          <h3 className="text-base font-semibold text-gray-900 mb-4">Accessibilité de la population</h3>
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: 'Bien desservie', value: summary.accessibility.well_served, color: '#22c55e', icon: '✅' },
-              { label: 'Modérément', value: summary.accessibility.moderately_served, color: '#f59e0b', icon: '⚠️' },
-              { label: 'Mal desservie', value: summary.accessibility.poorly_served, color: '#ef4444', icon: '❌' },
-            ].map((item) => (
-              <div key={item.label} className="text-center p-4 rounded-xl" style={{ backgroundColor: `${item.color}10` }}>
-                <p className="text-2xl mb-1">{item.icon}</p>
-                <p className="text-lg font-bold" style={{color: item.color}}>{formatNumber(item.value)}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{item.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {levels.loading ? (
+          <Spinner label="Chargement de la répartition..." />
+        ) : levels.error ? (
+          <ErrorState message={`Répartition indisponible : ${levels.error}`} />
+        ) : levels.data && levels.data.available ? (
+          <PopulationChart
+            title="Population par niveau de couverture"
+            data={levels.data.groups.map((g) => ({
+              label: COVERAGE_LEVEL_LABELS[g.key as CoverageLevel] ?? g.key,
+              population: g.population,
+              color: COVERAGE_LEVEL_COLORS[g.key as CoverageLevel] ?? '#6b7280',
+            }))}
+            footnote={
+              s.meta.coverage_thresholds
+                ? `Faible : 1 à ${s.meta.coverage_thresholds.low_max} options, moyenne : jusqu'à ${s.meta.coverage_thresholds.medium_max}, élevée : au-delà. Carreaux masqués exclus.`
+                : undefined
+            }
+          />
+        ) : (
+          <EmptyState message="Niveaux de couverture non disponibles pour ces données." />
+        )}
+        <StationsPieChart byType={s.stations_by_type} />
       </div>
     </div>
   );

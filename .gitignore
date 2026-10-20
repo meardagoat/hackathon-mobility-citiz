@@ -1,36 +1,33 @@
-# Dependencies
+# Données (trop lourdes pour Git : on versionne les scripts qui les téléchargent)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+*.osm.pbf
+*.gpkg
+*.parquet
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+.env
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+backend/fixtures/data_team/
+
+# Frontend (Next.js)
 node_modules/
-.pnp/
-.pnp.js
-
-# Testing
-coverage/
-
-# Next.js
 .next/
 out/
-build/
-dist/
-
-# Production
 *.tsbuildinfo
 next-env.d.ts
-
-# Misc
-.DS_Store
-*.pem
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Local env files
-.env
 .env*.local
-
-# Vercel
+npm-debug.log*
 .vercel
-
-# TypeScript
-*.tsbuildinfo

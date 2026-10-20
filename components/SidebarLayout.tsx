@@ -1,8 +1,9 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Map, Lightbulb, Activity, ChevronRight } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -11,8 +12,31 @@ const navItems = [
   { href: '/recommendations', icon: Lightbulb, label: 'Recommandations', description: 'Optimisation IA' },
 ];
 
+type ApiStatus = 'checking' | 'up' | 'down';
+
+function useApiStatus(): ApiStatus {
+  const [status, setStatus] = useState<ApiStatus>('checking');
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${new URL(API_BASE_URL).origin}/health`)
+      .then((response) => !cancelled && setStatus(response.ok ? 'up' : 'down'))
+      .catch(() => !cancelled && setStatus('down'));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return status;
+}
+
+const STATUS_STYLES: Record<ApiStatus, { dot: string; label: string }> = {
+  checking: { dot: 'bg-gray-400', label: 'Vérification de l\'API…' },
+  up: { dot: 'bg-green-400', label: 'API connectée' },
+  down: { dot: 'bg-red-400', label: 'API injoignable' },
+};
+
 function Sidebar() {
   const pathname = usePathname();
+  const status = STATUS_STYLES[useApiStatus()];
 
   return (
     <aside className="fixed inset-y-0 left-0 w-60 flex flex-col z-30" style={{backgroundColor: '#111111'}}>
@@ -58,10 +82,10 @@ function Sidebar() {
       {/* Footer */}
       <div className="px-5 py-4 border-t border-white/10">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <p className="text-white/40 text-xs">API connectée</p>
+          <div className={cn('w-2 h-2 rounded-full', status.dot)} />
+          <p className="text-white/40 text-xs">{status.label}</p>
         </div>
-        <p className="text-white/20 text-[10px] mt-1">v1.0 — Base URL: localhost:8000</p>
+        <p className="text-white/20 text-[10px] mt-1 truncate">{API_BASE_URL}</p>
       </div>
     </aside>
   );

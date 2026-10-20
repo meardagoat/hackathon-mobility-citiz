@@ -1,45 +1,30 @@
 'use client';
-import React, { useEffect } from 'react';
-import { useMap } from 'react-leaflet';
+import React from 'react';
 import { CircleMarker, Tooltip } from 'react-leaflet';
-import type { HeatMapResponse } from '@/types/api';
+import { formatNumber } from '@/lib/utils';
+import type { HeatmapResponse } from '@/types/api';
 
-function intensityToColor(intensity: number): string {
-  if (intensity >= 0.8) return '#3b82f6';
-  if (intensity >= 0.6) return '#22c55e';
-  if (intensity >= 0.4) return '#f59e0b';
-  if (intensity >= 0.2) return '#f97316';
-  return '#ef4444';
+export function intensityColor(ratio: number): string {
+  if (ratio >= 0.8) return '#1e3a8a';
+  if (ratio >= 0.6) return '#2563eb';
+  if (ratio >= 0.4) return '#60a5fa';
+  if (ratio >= 0.2) return '#93c5fd';
+  return '#dbeafe';
 }
 
-interface HeatMapLayerProps {
-  data: HeatMapResponse;
-}
-
-export function HeatMapLayer({ data }: HeatMapLayerProps) {
-  // Vérifier que data et features existent
-  if (!data || !data.features || !Array.isArray(data.features)) {
-    return null;
-  }
-
+export function HeatMapLayer({ data }: { data: HeatmapResponse }) {
+  const max = data.value_range?.max ?? 0;
   return (
     <>
-      {data.features.map((feature, i) => (
+      {data.points.map(([lon, lat, value]) => (
         <CircleMarker
-          key={i}
-          center={[feature.geometry.coordinates[1], feature.geometry.coordinates[0]]}
-          radius={Math.max(8, feature.properties.intensity * 20)}
-          pathOptions={{
-            fillColor: intensityToColor(feature.properties.intensity),
-            fillOpacity: 0.4,
-            stroke: false,
-          }}
+          key={`${lon},${lat}`}
+          center={[lat, lon]}
+          radius={6}
+          pathOptions={{ fillColor: intensityColor(max > 0 ? value / max : 0), fillOpacity: 0.6, stroke: false }}
         >
           <Tooltip>
-            <div className="text-xs">
-              <p>Intensité : {(feature.properties.intensity * 100).toFixed(0)}%</p>
-              <p>Population : {feature.properties.population.toLocaleString('fr-FR')}</p>
-            </div>
+            <span className="text-xs">{formatNumber(value)} habitants</span>
           </Tooltip>
         </CircleMarker>
       ))}
