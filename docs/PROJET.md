@@ -1,0 +1,126 @@
+# Le projet, les attendus et qui fait quoi
+
+## 1. Le problème
+
+Bus, tram, vélos et trottinettes en libre-service, autopartage : l'offre de mobilité augmente, mais elle est très inégalement répartie sur le territoire. Depuis la loi LOM, la plupart de ces services publient leurs données en open data :
+- **GTFS** pour les transports en commun (arrêts, lignes, horaires) ;
+- **GBFS** pour les services partagés (stations vélo, trottinettes, autopartage).
+
+La population est elle aussi publique (INSEE, carreaux de 200 m).
+
+**Citiz**, partenaire du hackathon, est le premier réseau coopératif d'autopartage en France : ~2 800 voitures, ~280 villes, ~130 000 conducteurs. Comme tout opérateur, Citiz doit choisir où ouvrir ses prochaines stations. Il faut qu'elles touchent le plus d'habitants, qu'elles complètent l'offre existante et qu'elles trouvent leurs utilisateurs.
+
+**Notre mission** : transformer ces données ouvertes en **outil d'aide à la décision d'implantation**.
+
+## 2. Ce qu'on doit produire (3 objectifs)
+
+| # | Objectif | Concrètement |
+|---|---|---|
+| 1 | **Cartographier l'accès à la mobilité** | Une carte où chaque zone est colorée du froid au chaud selon le **nombre d'options de transport accessibles par habitant à 5 min à pied**. |
+| 2 | **Montrer qui est concerné** | Afficher sur la carte les arrêts et stations par type (bus, tram, vélo, trottinette, Citiz…) avec la **population desservie par chacun**. |
+| 3 | **Proposer où implanter et investir** ⭐ | Recommander où Citiz doit ouvrir de nouvelles stations, et plus largement où ajouter un arrêt de bus ou une station vélo, pour **toucher le plus de monde au moindre coût**. |
+
+**L'objectif 3 est le cœur du projet.** Les objectifs 1 et 2 posent le diagnostic, le 3 le transforme en décision.
+
+L'outil de l'objectif 3 doit obligatoirement :
+- **estimer la valeur d'un emplacement candidat** (population nouvellement desservie, usage potentiel) avec un **modèle prédictif** ;
+- **intégrer une estimation de coût** pour chaque type d'équipement (station Citiz, arrêt de bus, station vélo) ;
+- **produire une liste priorisée d'emplacements sous contrainte de budget**, en tenant compte de l'offre déjà existante.
+
+**Périmètre** : la France entière, DROM compris, ou une métropole / région **si on justifie le choix**. Si Citiz n'est pas présent dans la zone choisie, l'objectif 3 devient : montrer où et comment Citiz pourrait s'y implanter.
+
+**Outils** : Microsoft Fabric est conseillé (traitement de données, ML, visualisation), les accès seront donnés au début. On peut utiliser autre chose, mais il faudra le justifier à la soutenance.
+
+## 3. Livrables (sur le repo Git)
+
+- [ ] Le **code** du projet
+- [ ] Les **slides** de la présentation (`slides/`)
+- [ ] La **liste des sources de données** (`DATA_SOURCES.md`)
+- Si on est sélectionnés pour la finale nationale : un prototype fonctionnel et une documentation technique pour que le travail puisse être repris.
+
+## 4. Comment on sera évalués
+
+On a **2,5 jours**, et l'essentiel est de **convaincre**. La soutenance comprend :
+
+1. **Une démo live sur des données réelles.** Elle doit marcher du premier coup.
+2. **Un argumentaire pour un non-technicien** : un problème concret, une recommandation claire, un **impact chiffré** (par exemple « +12 000 habitants desservis pour 300 k€ »), et ce que ça apporte à Citiz.
+3. **Un argumentaire pour un data scientist** : choix méthodologiques justifiés, **modèle évalué rigoureusement**, limites assumées.
+4. **L'éthique et l'impact sociétal**, qui comptent dans la note :
+   - impact carbone estimé (report de la voiture individuelle vers la mobilité partagée) ;
+   - équité entre zones denses et peu denses (ne pas servir uniquement les zones déjà bien desservies) ;
+   - risque de stigmatiser un territoire étiqueté « mal desservi » ;
+   - protection de la vie privée dans les zones très peu peuplées.
+
+⚠️ **Chaque membre doit pouvoir expliquer l'ensemble du projet** et répondre en détail sur sa propre partie.
+
+## 5. Approche technique proposée
+
+**Zone d'étude retenue : Bordeaux Métropole et Gironde.** Choix fait à partir des données collectées (stations Citiz GBFS et population INSEE, collecte du 2026-10-19) :
+
+| Département (métropole) | Habitants | Stations Citiz | Stations / 100 000 hab. | Population à 5 min à pied d'une station Citiz |
+|---|---|---|---|---|
+| Bas-Rhin (Strasbourg) | 1,08 M | 205 | 19,0 | 27 % |
+| Rhône (Lyon) | 1,77 M | 208 | 11,7 | 35 % |
+| Haute-Garonne (Toulouse) | 1,34 M | 122 | 9,1 | 19 % |
+| **Gironde (Bordeaux)** | **1,61 M** | **100** | **6,2** | **13 %** |
+| Nord (Lille) | 2,47 M | 71 | 2,9 | 8 % |
+
+- Citiz y est présent (100 stations) : on peut valider le modèle localement, mais la marge de développement est forte, contrairement à Strasbourg ou Lyon, déjà denses.
+- La Gironde fait partie des départements à plus forte croissance démographique : argument pour les besoins futurs.
+- Offre de transport riche (tram, bus et bateaux TBM, cars régionaux, vélos V³) et contraste fort entre centre dense et périurbain : utile pour l'argument d'équité.
+- Le modèle peut apprendre sur les 1 617 stations Citiz de toute la France ; la zone sert à la démonstration et aux recommandations.
+
+**Unité d'analyse** : le **carreau INSEE de 200 m** (population, revenus, ménages).
+
+**Chaîne de traitement :**
+
+```
+GTFS + GBFS + Citiz ─┐
+INSEE carreaux ──────┴─> [Données] ─> [Accessibilité 5 min] ─> [Modèle de valeur] ─> [Optimisation budget] ─> [Carte / démo]
+                       01 à 03 (Fabric)      04 · obj. 1 & 2              05 · obj. 3
+```
+
+Ni OpenStreetMap ni les contours IGN (communes, IRIS) ne sont utilisés : la distance à pied est un rayon et la commune vient du code INSEE de chaque carreau (voir ci-dessous).
+
+1. **Accessibilité (objectifs 1 et 2)** : « 5 min à pied » ≈ **400 m à vol d'oiseau** depuis le centre du carreau (notebook `04_accessibilite`). Le calcul d'isochrones sur le réseau piéton OpenStreetMap, envisagé au départ, n'a pas été retenu. La commune d'un carreau est donnée par son code INSEE (`lcog_geo`), sans contours IGN. Pour chaque carreau, on compte les options accessibles par type et on calcule le score par habitant. Pour chaque arrêt, la population desservie est la somme des carreaux couverts.
+2. **Modèle prédictif (objectif 3)** : apprendre ce qui caractérise un bon emplacement à partir des stations Citiz et vélo existantes. Les variables explicatives sont la densité, le revenu, la motorisation des ménages, l'offre de transport proche, les équipements, les emplois et les projections démographiques. On évalue par **validation croisée spatiale** (pas de fuite entre zones voisines) et on compare à une baseline simple.
+3. **Coûts** : des ordres de grandeur **sourcés** par type d'équipement (installation + fonctionnement annuel).
+4. **Optimisation** : choisir les emplacements qui **maximisent la population nouvellement couverte pondérée par l'usage prédit, sous un budget donné**, sans double-compter les habitants déjà desservis. Problème de couverture maximale, résolu par algorithme glouton ou programmation linéaire (PuLP).
+5. **Démo** : carte interactive avec les couches d'accessibilité, d'arrêts et de recommandations, plus un **curseur de budget** qui met à jour la liste priorisée en direct.
+
+## 6. Répartition du travail (équipe de 4)
+
+| Rôle | Responsable | Missions | Livre à l'équipe |
+|---|---|---|---|
+| **A. Données & pipeline** | _à attribuer_ | Télécharger et nettoyer GTFS, GBFS (dont Citiz) et carreaux INSEE pour la zone choisie. Unifier tous les arrêts et stations dans un même format. Tenir `DATA_SOURCES.md`. Mettre en place Microsoft Fabric (lakehouse) dès que les accès arrivent. | `data/processed/stops.parquet` (id, type, opérateur, géométrie) et `data/processed/carreaux.parquet` (population, revenus, ménages, géométrie) **avant la fin de la matinée du jour 1** |
+| **B. Accessibilité & cartographie (obj. 1-2)** | _à attribuer_ | Calculer l'accessibilité à 5 min à pied (rayon de 400 m), le score d'accessibilité par carreau et la population desservie par arrêt. Produire les cartes des objectifs 1 et 2. Repérer les zones blanches. | `accessibility.parquet` (score par carreau) et `stops_served.parquet` (population par arrêt), plus la carte |
+| **C. Modèle prédictif & optimisation (obj. 3)** | _à attribuer_ | Construire les variables, entraîner et **évaluer** le modèle (validation spatiale, métriques, baseline). Écrire la table de coûts et l'algorithme de sélection sous budget. | Une fonction `recommander(budget, types)` qui renvoie la liste priorisée avec la valeur estimée, le coût et la population gagnée |
+| **D. Produit, démo & soutenance** | _à attribuer_ | Construire l'app de démo (carte et curseur budget). Chiffrer l'impact (habitants gagnés, CO₂ évité). Rédiger la partie éthique. Préparer les slides et le storytelling, coordonner les répétitions. | L'app démo, les slides dans `slides/` et le script de soutenance |
+
+**Points de contact entre rôles :**
+- A → B et C : les formats de `stops` et `carreaux` sont figés dès la première heure. B et C commencent avec un **petit échantillon** sans attendre les données complètes.
+- B → C : la couverture actuelle (qui est déjà desservi) sert à ne pas recompter les habitants dans l'optimisation.
+- C → D : D branche l'app sur des **résultats factices** dès le jour 1, puis les remplace par les vrais.
+
+**Si on est 3** : D est réparti entre B (app et carte) et C (slides et impact), et tout le monde prépare la soutenance le dernier jour.
+**Si on est 5** : on ajoute un rôle **E « Usage & impact »** qui collecte les données de contexte (motorisation, emplois, équipements, projections Omphale) pour le modèle et s'occupe du calcul CO₂ et de l'éthique.
+
+## 7. Planning (2,5 jours)
+
+| Moment | Objectif | Jalon |
+|---|---|---|
+| **J1 matin** | Lancement : on valide la zone et les formats, on configure le repo et Fabric | Données de base chargées pour la zone (A), squelette de l'app (D) |
+| **J1 après-midi** | Premières versions de bout en bout | Carte d'accessibilité v1 (B), modèle baseline + glouton (C) |
+| **J2 matin** | Montée en qualité | Accessibilité consolidée (B), modèle évalué + coûts sourcés (C) |
+| **J2 après-midi** | Intégration | **Démo complète de bout en bout** branchée sur les vraies données |
+| **J2 soir** | Gel des fonctionnalités | Plus de nouvelle fonctionnalité, uniquement des corrections |
+| **J3 matin** | Soutenance | Slides finales, 2 répétitions chronométrées, plan B si la démo plante (captures et vidéo) |
+
+**Règle d'or** : une version simple qui marche de bout en bout dès le J1 soir vaut mieux qu'une version parfaite qui n'est pas intégrée le J3.
+
+## 8. Fonctionnement de l'équipe
+
+- Point de synchro de 10 min **matin, midi et soir** sur Teams.
+- Une branche par tâche et des pull requests vers `dev` (branche d'intégration), puis `dev` vers `main`. On ne commit jamais de données, seulement les scripts qui les téléchargent.
+- Toute nouvelle source va **immédiatement** dans `DATA_SOURCES.md`.
+- Chaque responsable écrit 3-4 lignes dans ce document pour expliquer ses choix : ça servira pour les questions du jury.

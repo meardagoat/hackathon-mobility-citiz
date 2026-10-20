@@ -1,0 +1,25 @@
+# Données & géospatial
+pandas
+numpy
+geopandas
+shapely
+pyproj
+requests
+pyarrow
+
+# Réseau piéton / isochrones
+osmnx
+networkx
+
+# Modèle & optimisation
+scikit-learn
+lightgbm
+pulp
+
+# Carte & démo
+folium
+streamlit
+streamlit-folium
+
+# Tests
+pytest
