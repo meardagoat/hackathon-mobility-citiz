@@ -20,3 +20,8 @@ export function formatDate(iso: string | null | undefined): string {
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
 }
+
+// Pour les bulles de carte construites en HTML : aucune valeur venue des données ne doit devenir du balisage
+export function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+}
