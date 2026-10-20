@@ -36,6 +36,19 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Frontend (Next.js)
+
+Application de démo à la racine du dépôt (`app/`, `components/`, `hooks/`, `lib/`, `types/`). Elle consomme l'API du backend (`backend/README.md`) et n'affiche que ses réponses : en cas d'erreur, un message d'erreur, jamais de données de remplacement.
+
+```bash
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL, par défaut http://localhost:8000/api/v1
+npm ci
+npm run dev                  # http://localhost:3000, backend lancé à part
+npm run build
+```
+
+`node test-backend.js` vérifie que le backend répond sur chaque endpoint.
+
 ## Données
 
 Les données brutes sont chargées dans le Lakehouse Fabric `LakeHouseZ` (espace HackathonZ) : voir [fabric/README.md](fabric/README.md) et le dictionnaire des tables [docs/DONNEES.md](docs/DONNEES.md).
