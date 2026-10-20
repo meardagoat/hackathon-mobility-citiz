@@ -27,6 +27,19 @@ export const TRANSPORT_ICONS: Record<TransportType, string> = {
   scooter: '🛴',
 };
 
+// Mapping types backend → types frontend
+// Backend: bus, tram, metro, train, bateau, velo, citiz
+// Frontend: bus, metro, tram, bike, carsharing, scooter
+export const BACKEND_TYPE_MAPPING: Record<string, TransportType> = {
+  bus: 'bus',
+  tram: 'tram',
+  metro: 'metro',
+  train: 'metro', // Train → Métro
+  bateau: 'bus', // Bateau → Bus (transport en commun)
+  velo: 'bike', // Vélo → Bike
+  citiz: 'carsharing', // Citiz → Carsharing
+};
+
 // Centré sur Bordeaux Métropole (cas d'étude du hackathon)
 export const MAP_DEFAULT_CENTER: [number, number] = [44.8378, -0.5792]; // Bordeaux
 export const MAP_DEFAULT_ZOOM = 12;

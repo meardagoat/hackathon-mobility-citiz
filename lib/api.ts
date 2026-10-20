@@ -21,6 +21,7 @@ import type {
   RegionsResponse,
   MetadataResponse,
 } from '@/types/api';
+import { dataTransformers } from './dataTransformers';
 
 // ============================================================================
 // CONFIGURATION
@@ -103,24 +104,41 @@ export const api = {
   
   /**
    * Obtenir la couverture de mobilité par zones
+   * Transforme les données backend (carreaux) en format frontend (zones)
    */
   async getCoverage(params?: CoverageParams): Promise<CoverageResponse> {
-    const response = await apiClient.get<ApiResponse<CoverageResponse>>(
+    const response = await apiClient.get<any>(
       '/mobility/coverage',
       { params }
     );
-    return response.data.data;
+    
+    // Transformer les carreaux backend en zones frontend
+    const carreaux = response.data.data?.carreaux || response.data.carreaux || response.data || [];
+    const zones = dataTransformers.zones(carreaux);
+    
+    return {
+      zones,
+      metadata: {
+        total_zones: zones.length,
+        region: params?.region || 'Bordeaux Métropole',
+        timestamp: new Date().toISOString(),
+      },
+    };
   },
 
   /**
    * Obtenir les données de heat map
+   * Transforme les carreaux en features GeoJSON pour la heat map
    */
   async getHeatMap(params?: HeatMapParams): Promise<HeatMapResponse> {
-    const response = await apiClient.get<ApiResponse<HeatMapResponse>>(
+    const response = await apiClient.get<any>(
       '/mobility/heatmap',
       { params }
     );
-    return response.data.data;
+    
+    // Transformer les carreaux en heat map
+    const carreaux = response.data.data?.carreaux || response.data.carreaux || response.data || [];
+    return dataTransformers.heatMap(carreaux);
   },
 
   /**
@@ -139,13 +157,27 @@ export const api = {
 
   /**
    * Lister les stations avec filtres
+   * Transforme offre_existante en stations frontend
    */
   async getStations(params?: StationsParams): Promise<StationsResponse> {
-    const response = await apiClient.get<ApiResponse<StationsResponse>>(
+    const response = await apiClient.get<any>(
       '/stations',
       { params }
     );
-    return response.data.data;
+    
+    // Transformer offre_existante en stations
+    const rawStations = response.data.data?.stations || response.data.stations || response.data || [];
+    const stations = dataTransformers.stations(rawStations);
+    
+    return {
+      stations,
+      pagination: {
+        total: stations.length,
+        limit: params?.limit || 100,
+        offset: params?.offset || 0,
+        has_more: false,
+      },
+    };
   },
 
   /**
@@ -164,23 +196,76 @@ export const api = {
 
   /**
    * Obtenir les statistiques globales
+   * Calcule depuis les carreaux et stations
    */
   async getSummaryStatistics(params?: SummaryParams): Promise<SummaryStatistics> {
-    const response = await apiClient.get<ApiResponse<SummaryStatistics>>(
-      '/statistics/summary',
-      { params }
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.get<any>(
+        '/statistics/summary',
+        { params }
+      );
+      
+      // Si le backend renvoie déjà les stats au bon format, les utiliser
+      if (response.data.data?.population) {
+        return response.data.data;
+      }
+      
+      // Sinon, calculer depuis carreaux et stations
+      const [carreaux, stations] = await Promise.all([
+        this.getCoverage(params).then(r => r.zones.map((z: any) => z)),
+        this.getStations(params).then(r => r.stations),
+      ]);
+      
+      return dataTransformers.summaryStatistics(carreaux as any, stations as any);
+    } catch (error) {
+      console.error('[API] Error fetching summary statistics:', error);
+      // Retourner des données par défaut en cas d'erreur
+      return {
+        region: params?.region || 'Bordeaux Métropole',
+        population: { total: 0, covered: 0, coverage_rate: 0 },
+        stations: { total: 0, by_type: { bus: 0, metro: 0, tram: 0, bike: 0, carsharing: 0, scooter: 0 } },
+        accessibility: { well_served: 0, moderately_served: 0, poorly_served: 0 },
+        avg_options_per_inhabitant: 0,
+        avg_walking_time_minutes: 5,
+      };
+    }
   },
 
   /**
    * Obtenir les statistiques de population
+   * Transforme depuis les carreaux avec niveau_acces
    */
   async getPopulationStatistics(): Promise<PopulationStatistics> {
-    const response = await apiClient.get<ApiResponse<PopulationStatistics>>(
-      '/statistics/population'
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.get<any>('/statistics/population');
+      
+      // Si le backend renvoie déjà au bon format
+      if (response.data.data?.distribution) {
+        return response.data.data;
+      }
+      
+      // Sinon, calculer depuis les carreaux
+      const coverage = await this.getCoverage();
+      const carreaux = coverage.zones as any;
+      
+      return {
+        distribution: dataTransformers.populationDistribution(carreaux),
+        by_region: [],
+      };
+    } catch (error) {
+      console.error('[API] Error fetching population statistics:', error);
+      // Retourner des données par défaut
+      return {
+        distribution: [
+          { coverage_range: '0-0.2', label: 'Très faible', population: 0, percentage: 0, color: '#ef4444' },
+          { coverage_range: '0.2-0.4', label: 'Faible', population: 0, percentage: 0, color: '#f59e0b' },
+          { coverage_range: '0.4-0.6', label: 'Moyen', population: 0, percentage: 0, color: '#fbbf24' },
+          { coverage_range: '0.6-0.8', label: 'Bon', population: 0, percentage: 0, color: '#84cc16' },
+          { coverage_range: '0.8-1.0', label: 'Excellent', population: 0, percentage: 0, color: '#22c55e' },
+        ],
+        by_region: [],
+      };
+    }
   },
 
   // --------------------------------------------------------------------------
@@ -189,15 +274,19 @@ export const api = {
 
   /**
    * Obtenir les recommandations d'emplacements
+   * Transforme les recommandations backend en format frontend
    */
   async getRecommendations(
     request: RecommendationRequest
   ): Promise<RecommendationsResponse> {
-    const response = await apiClient.post<ApiResponse<RecommendationsResponse>>(
+    const response = await apiClient.post<any>(
       '/recommendations',
       request
     );
-    return response.data.data;
+    
+    // Transformer les recommandations
+    const rawRecommendations = response.data.data?.recommendations || response.data.recommendations || response.data || [];
+    return dataTransformers.recommendations(rawRecommendations);
   },
 
   /**
