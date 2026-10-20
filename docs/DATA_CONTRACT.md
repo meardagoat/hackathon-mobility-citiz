@@ -113,3 +113,13 @@ Contrat de l'API (endpoints, champs, erreurs) : `backend/README.md`. Vérifié s
 - `pop_desservie` et `pop_nouvelle` incluent les carreaux masqués : l'API les recalcule sans ces carreaux (même rayon, même règle de couverture que le notebook 05).
 - `pop_nouvelle` n'a pas de double compte entre les rangs d'un **même type**. Pour `perimetre = tous`, la somme sur plusieurs types (et donc `impacts.habitants_nouvellement_servis`) compte deux fois un habitant couvert par deux types.
 - `budget_scenario` servis : 100 000, 250 000, 500 000, 1 000 000. `cout_eur` est un coût sur `couts.annees` (3) ans.
+
+## Hypothèses de coûts (notebook 05_score_classement)
+
+| Donnée | Valeur retenue | Source |
+| --- | --- | --- |
+| Boîtier embarqué et coût d'exploitation d'une voiture Citiz | 4 000 € ; 3 000 €/an par véhicule | [Convention autopartage Citiz, Pôle métropolitain du Genevois français (2023)](https://genevoisfrancais.org/wp-content/uploads/CS2023_03.2-MAJ-CONVENTION-DEPLOIMENT-AUTOPARTAGE_annexe-1.pdf) |
+| Prix du véhicule Citiz | ~20 000 € | Estimation de l'équipe, à confirmer avec Citiz |
+| Voitures particulières remplacées par une voiture partagée | 8 | [Livre blanc de l'autopartage Citiz (2025)](https://regions.citiz.coop/uploads/sites/8/2026/02/2025-12-Livre-blanc-autopartage-Citiz.pdf) |
+| Coût annuel d'un vélo en libre-service | 2 000 à 4 000 € par vélo (3 000 € retenus) | Compilation du *Monde* (2015), reprise par [We Demain](https://www.wedemain.fr/sauver-la-planete/transition-ecologique/4-000eu-par-an-cest-le-cout-annuel-dun-velo-en-libre-service-1129070) |
+| Aménagement d'un arrêt de bus accessible | 10 700 à 23 000 € (15 000 € retenus) | [Cerema, rapport sur les quais modulaires](https://www.cerema.fr/fr/system/files/documents/2018/02/CEREMA-rapport-quais-modulaires-art1642.pdf) |
