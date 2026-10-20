@@ -20,3 +20,6 @@ pulp
 folium
 streamlit
 streamlit-folium
+
+# Tests
+pytest
