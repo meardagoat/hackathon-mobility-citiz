@@ -18,7 +18,7 @@ def _zone(north: int, east: int, population: float, commune: str, is_estimated: 
 
 
 def _station(slug: str, name: str, modes: tuple[StationType, ...], operator: str, lon: float, lat: float,
-             capacity: int | None = None) -> Station:
+             commune: str, capacity: int | None = None) -> Station:
     return Station(
         station_id=station_id(StationSource.mock, "", slug),
         name=name,
@@ -28,6 +28,7 @@ def _station(slug: str, name: str, modes: tuple[StationType, ...], operator: str
         source=StationSource.mock,
         lon=lon,
         lat=lat,
+        commune_code=commune,
         capacity=capacity,
     )
 
@@ -52,16 +53,18 @@ MOCK_ZONES = (
 )
 
 MOCK_STATIONS = (
-    _station("quinconces", "Quinconces", (StationType.tram, StationType.bus), "TBM", -0.5745, 44.8445),
+    _station("quinconces", "Quinconces", (StationType.tram, StationType.bus), "TBM", -0.5745, 44.8445, BORDEAUX),
     _station("gare-saint-jean", "Gare Saint-Jean", (StationType.train, StationType.tram, StationType.bus),
-             "SNCF / TBM", -0.5560, 44.8257),
-    _station("hotel-de-ville", "Hôtel de Ville", (StationType.tram,), "TBM", -0.5797, 44.8378),
-    _station("batcub-quinconces", "Quinconces (BatCub)", (StationType.ferry,), "TBM", -0.5712, 44.8455),
-    _station("v3-place-gambetta", "V³ Place Gambetta", (StationType.bike,), "TBM", -0.5807, 44.8411,
+             "SNCF / TBM", -0.5560, 44.8257, BORDEAUX),
+    _station("hotel-de-ville", "Hôtel de Ville", (StationType.tram,), "TBM", -0.5797, 44.8378, BORDEAUX),
+    _station("batcub-quinconces", "Quinconces (BatCub)", (StationType.ferry,), "TBM", -0.5712, 44.8455, BORDEAUX),
+    _station("v3-place-gambetta", "V³ Place Gambetta", (StationType.bike,), "TBM", -0.5807, 44.8411, BORDEAUX,
              capacity=20),
-    _station("citiz-chartrons", "Citiz Chartrons", (StationType.citiz,), "Citiz", -0.5720, 44.8540, capacity=3),
-    _station("merignac-centre", "Mérignac Centre", (StationType.tram, StationType.bus), "TBM", -0.6436, 44.8386),
-    _station("libourne-gare", "Gare de Libourne", (StationType.train,), "SNCF", -0.2369, 44.9152),
+    _station("citiz-chartrons", "Citiz Chartrons", (StationType.citiz,), "Citiz", -0.5720, 44.8540, BORDEAUX,
+             capacity=3),
+    _station("merignac-centre", "Mérignac Centre", (StationType.tram, StationType.bus), "TBM", -0.6436, 44.8386,
+             MERIGNAC),
+    _station("libourne-gare", "Gare de Libourne", (StationType.train,), "SNCF", -0.2369, 44.9152, LIBOURNE),
 )
 
 

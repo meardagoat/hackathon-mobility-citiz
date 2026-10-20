@@ -1,5 +1,6 @@
 import logging
-from collections import Counter
+import math
+from collections import defaultdict
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -7,26 +8,55 @@ from typing import TypeVar
 
 import pyarrow.parquet as pq
 
+from app.areas import Area
 from app.config import DataMode
 from app.coverage_levels import CoverageThresholds
-from app.data.models import Candidate, Dataset, EquipmentType, Station, Zone
+from app.data.models import Dataset, EquipmentType, Perimeter, PrecomputedRecommendation, Station, Zone
+from app.data.population import GRID_EPSG, ZoneGrid, candidate_cell, with_served_population, with_visible_gains
 from app.geo import parse_cell_id
-from app.station_types import StationSource, StationType, gbfs_modes, gtfs_modes, primary_type, station_id
+from app.station_types import StationSource, StationType
 
 logger = logging.getLogger(__name__)
 
-ZONES_FILE = "zones.parquet"
-STATIONS_FILE = "stations.parquet"
-CANDIDATES_FILE = "candidates.parquet"
+ZONES_FILE = "carreaux.parquet"
+STATIONS_FILE = "offre_existante.parquet"
+RECOMMENDATIONS_FILE = "recommandations.parquet"
+META_FILE = "meta.parquet"
 
-ZONE_COLUMNS = {"zone_id", "population", "is_estimated", "commune_codes"}
-STATION_COLUMNS = {"source", "resource_id", "native_id", "name", "operator", "lon", "lat"}
-GTFS_COLUMNS = {"route_types"}
-GBFS_COLUMNS = {"form_factors", "is_citiz"}
-CANDIDATE_COLUMNS = {"location_id", "equipment_type", "lon", "lat", "cost", "population_gained", "estimated_value"}
-OPTION_COLUMNS = {f"options_{t.value}": t for t in StationType}
+ZONE_COLUMNS = {"id_carreau", "code_commune", "population", "nb_options", "donnee_masquee"}
+STATION_COLUMNS = {"id_station", "nom", "type", "operateur", "code_commune", "lon", "lat", "pop_desservie"}
+RECOMMENDATION_COLUMNS = {
+    "perimetre", "budget_scenario", "rang", "id_candidat", "type", "lon", "lat", "code_commune",
+    "cout_eur", "cout_cumule_eur", "pop_nouvelle", "score", "adequation", "voitures_evitees",
+}
+META_COLUMNS = {"date_maj", "rayon_m"}
+
+OPTIONS_COLUMN = "nb_options"
+OPTION_PREFIX = "nb_"
 ZONE_CELL_SIZE = 200
+COMMUNE_CODE_LENGTH = 5
+COVERED_AREAS = frozenset({Area.bordeaux_metropole})
 MAX_LOGGED_EXAMPLES = 5
+
+STATION_TYPES = {
+    "bus": StationType.bus,
+    "tram": StationType.tram,
+    "metro": StationType.metro,
+    "train": StationType.train,
+    "bateau": StationType.ferry,
+    "velo": StationType.bike,
+    "citiz": StationType.citiz,
+}
+EQUIPMENT_TYPES = {
+    "bus": EquipmentType.bus_stop,
+    "velo": EquipmentType.bike_station,
+    "citiz": EquipmentType.citiz_station,
+}
+STATION_SOURCES = {"gtfs_": StationSource.gtfs, "gbfs_": StationSource.gbfs}
+PERIMETER_TYPES = {
+    Perimeter.all_types: frozenset(EquipmentType),
+    Perimeter.citiz: frozenset({EquipmentType.citiz_station}),
+}
 
 T = TypeVar("T")
 
@@ -35,12 +65,11 @@ class DataLoadError(RuntimeError):
     pass
 
 
-def _read(path: Path, required: set[str]) -> tuple[list[dict], set[str]]:
+def _read(path: Path, required: set[str]) -> tuple[list[dict], list[str]]:
     if not path.exists():
         raise DataLoadError(f"missing prepared data file: {path}")
     table = pq.read_table(path)
-    columns = set(table.column_names)
-    missing = required - columns
+    missing = required - set(table.column_names)
     if missing:
         raise DataLoadError(f"{path.name} is missing columns: {sorted(missing)}")
     rows = table.to_pylist()
@@ -48,7 +77,7 @@ def _read(path: Path, required: set[str]) -> tuple[list[dict], set[str]]:
         for column in sorted(required):
             if row[column] is None:
                 raise DataLoadError(f"{path.name} row {i}: required column '{column}' is null")
-    return rows, columns
+    return rows, table.column_names
 
 
 def _convert(file: str, rows: list[dict], convert: Callable[[dict], T]) -> tuple[T, ...]:
@@ -61,111 +90,233 @@ def _convert(file: str, rows: list[dict], convert: Callable[[dict], T]) -> tuple
     return tuple(result)
 
 
+def _check_unique(file: str, values: list[str], column: str) -> None:
+    seen = set()
+    for i, value in enumerate(values):
+        if value in seen:
+            raise DataLoadError(f"{file} row {i}: duplicate {column} {value!r}")
+        seen.add(value)
+
+
 def _as_bool(value: object, column: str) -> bool:
     if not isinstance(value, bool):
         raise ValueError(f"'{column}' must be a boolean, got {value!r}")
     return value
 
 
-def _zone_id(value: str) -> str:
-    if parse_cell_id(value).size != ZONE_CELL_SIZE:
-        raise ValueError(f"zone_id must be a {ZONE_CELL_SIZE} m INSEE cell id, got {value!r}")
+def _as_text(value: object, column: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"'{column}' must be a non-empty string, got {value!r}")
     return value
 
 
-def _collected_at(rows: list[dict]) -> datetime | None:
-    dates = [datetime.fromisoformat(str(r["date_collecte"])) for r in rows if r.get("date_collecte")]
-    return max(dates) if dates else None
+def _as_number(value: object, column: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise ValueError(f"'{column}' must be a finite number, got {value!r}")
+    return float(value)
 
 
-def _zone(row: dict) -> Zone:
-    options_by_type = {t: int(row[col]) for col, t in OPTION_COLUMNS.items() if row.get(col) is not None}
+def _as_count(value: object, column: str) -> int:
+    integral = (isinstance(value, int) and not isinstance(value, bool)) or (
+        isinstance(value, float) and value.is_integer()
+    )
+    if not integral or value < 0:
+        raise ValueError(f"'{column}' must be a non-negative integer, got {value!r}")
+    return int(value)
+
+
+def _as_fraction(value: object, column: str) -> float:
+    number = _as_number(value, column)
+    if not 0 <= number <= 1:
+        raise ValueError(f"'{column}' must be between 0 and 1, got {value!r}")
+    return number
+
+
+def _lookup(mapping: dict[str, T], value: object, label: str) -> T:
+    if value not in mapping:
+        raise ValueError(f"unknown {label} {value!r}")
+    return mapping[value]
+
+
+def _commune_code(value: object) -> str:
+    if not isinstance(value, str) or len(value) != COMMUNE_CODE_LENGTH:
+        raise ValueError(f"'code_commune' must be a {COMMUNE_CODE_LENGTH}-character INSEE code, got {value!r}")
+    return value
+
+
+def _position(row: dict) -> tuple[float, float]:
+    lon, lat = _as_number(row["lon"], "lon"), _as_number(row["lat"], "lat")
+    if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+        raise ValueError(f"lon/lat must be WGS84 degrees, got ({lon}, {lat})")
+    return lon, lat
+
+
+def _zone_id(value: object) -> str:
+    zone_id = _as_text(value, "id_carreau")
+    cell = parse_cell_id(zone_id)
+    if cell.size != ZONE_CELL_SIZE or cell.epsg != GRID_EPSG:
+        raise ValueError(f"id_carreau must be a {ZONE_CELL_SIZE} m EPSG:{GRID_EPSG} INSEE cell id, got {zone_id!r}")
+    return zone_id
+
+
+def _option_columns(columns: list[str]) -> dict[str, StationType]:
+    names = [c for c in columns if c.startswith(OPTION_PREFIX) and c != OPTIONS_COLUMN]
+    try:
+        return {c: _lookup(STATION_TYPES, c.removeprefix(OPTION_PREFIX), "station type") for c in sorted(names)}
+    except ValueError as error:
+        raise DataLoadError(f"{ZONES_FILE} option column: {error}") from error
+
+
+def _check_option_coverage(option_columns: dict[str, StationType], stations: tuple[Station, ...]) -> None:
+    names = {t: name for name, t in STATION_TYPES.items()}
+    missing = {s.type for s in stations} - set(option_columns.values())
+    if missing:
+        expected = sorted(f"{OPTION_PREFIX}{names[t]}" for t in missing)
+        raise DataLoadError(f"{ZONES_FILE} is missing option columns for station types present in "
+                            f"{STATIONS_FILE}: {expected}")
+
+
+def _zone(row: dict, option_columns: dict[str, StationType]) -> Zone:
+    options_count = _as_count(row[OPTIONS_COLUMN], OPTIONS_COLUMN)
+    options_by_type = {t: _as_count(row[c], c) for c, t in option_columns.items()}
+    if options_by_type and sum(options_by_type.values()) != options_count:
+        raise ValueError(f"'{OPTIONS_COLUMN}' is {options_count} but the per-type columns sum to "
+                         f"{sum(options_by_type.values())}")
     return Zone(
-        zone_id=_zone_id(row["zone_id"]),
-        population=float(row["population"]),
-        is_estimated=_as_bool(row["is_estimated"], "is_estimated"),
-        commune_codes=tuple(row["commune_codes"]),
-        options_count=None if row.get("options_count") is None else int(row["options_count"]),
+        zone_id=_zone_id(row["id_carreau"]),
+        population=float(_as_count(row["population"], "population")),
+        is_estimated=_as_bool(row["donnee_masquee"], "donnee_masquee"),
+        commune_codes=(_commune_code(row["code_commune"]),),
+        options_count=options_count,
         options_by_type=options_by_type or None,
-        accessibility_score=row.get("accessibility_score"),
     )
 
 
-def _check_station_sources(rows: list[dict], columns: set[str]) -> None:
-    sources = {row["source"] for row in rows}
-    for source, required in ((StationSource.gtfs, GTFS_COLUMNS), (StationSource.gbfs, GBFS_COLUMNS)):
-        missing = required - columns
-        if source.value in sources and missing:
-            raise DataLoadError(f"{STATIONS_FILE} has {source.value} rows but is missing columns: {sorted(missing)}")
-    for i, row in enumerate(rows):
-        if row["source"] == StationSource.gbfs.value and row["is_citiz"] is None:
-            raise DataLoadError(f"{STATIONS_FILE} row {i}: required column 'is_citiz' is null for a gbfs station")
+def _station_source(station_id: str) -> StationSource:
+    for prefix, source in STATION_SOURCES.items():
+        if station_id.startswith(prefix):
+            return source
+    raise ValueError(f"id_station must start with one of {sorted(STATION_SOURCES)}, got {station_id!r}")
 
 
-def _station(row: dict, unknown: Counter) -> Station:
-    source = StationSource(row["source"])
-    if source is StationSource.gtfs:
-        modes = gtfs_modes(row["route_types"] or [], unknown)
-    else:
-        modes = gbfs_modes(row["form_factors"] or [], _as_bool(row["is_citiz"], "is_citiz"), unknown)
+def _station(row: dict) -> Station:
+    station_id = _as_text(row["id_station"], "id_station")
+    station_type = _lookup(STATION_TYPES, row["type"], "station type")
+    lon, lat = _position(row)
     return Station(
-        station_id=station_id(source, str(row["resource_id"]), str(row["native_id"])),
-        name=row["name"],
-        modes=modes,
-        type=primary_type(modes),
-        operator=row["operator"],
-        source=source,
-        lon=float(row["lon"]),
-        lat=float(row["lat"]),
-        capacity=row.get("capacity"),
-        population_served=row.get("population_served"),
+        station_id=station_id,
+        name=_as_text(row["nom"], "nom"),
+        modes=(station_type,),
+        type=station_type,
+        operator=_as_text(row["operateur"], "operateur"),
+        source=_station_source(station_id),
+        lon=lon,
+        lat=lat,
+        commune_code=_commune_code(row["code_commune"]),
+        population_served=_as_count(row["pop_desservie"], "pop_desservie"),
     )
 
 
-def _stations(rows: list[dict], columns: set[str]) -> tuple[Station, ...]:
-    _check_station_sources(rows, columns)
-    unknown: Counter = Counter()
-    examples: list[str] = []
-
-    def convert(row: dict) -> Station:
-        before = unknown.total()
-        station = _station(row, unknown)
-        if unknown.total() > before and len(examples) < MAX_LOGGED_EXAMPLES:
-            examples.append(station.station_id)
-        return station
-
-    stations = _convert(STATIONS_FILE, rows, convert)
-    if unknown:
-        logger.warning(
-            "unknown or missing transport types mapped to 'other': %s (examples: %s)", dict(unknown), examples
-        )
-    return stations
-
-
-def _candidate(row: dict) -> Candidate:
-    return Candidate(
-        location_id=row["location_id"],
-        equipment_type=EquipmentType(row["equipment_type"]),
-        lon=float(row["lon"]),
-        lat=float(row["lat"]),
-        cost=float(row["cost"]),
-        population_gained=int(row["population_gained"]),
-        estimated_value=float(row["estimated_value"]),
+def _recommendation(row: dict) -> PrecomputedRecommendation:
+    perimeter = Perimeter(row["perimetre"])
+    equipment_type = _lookup(EQUIPMENT_TYPES, row["type"], "equipment type")
+    if equipment_type not in PERIMETER_TYPES[perimeter]:
+        raise ValueError(f"equipment type {row['type']!r} is outside perimeter {perimeter.value!r}")
+    location_id = _as_text(row["id_candidat"], "id_candidat")
+    if not location_id.startswith(f"{row['type']}_"):
+        raise ValueError(f"id_candidat must start with '{row['type']}_', got {location_id!r}")
+    _zone_id(candidate_cell(location_id).id)
+    lon, lat = _position(row)
+    return PrecomputedRecommendation(
+        perimeter=perimeter,
+        budget=_as_count(row["budget_scenario"], "budget_scenario"),
+        rank=_as_count(row["rang"], "rang"),
+        location_id=location_id,
+        equipment_type=equipment_type,
+        lon=lon,
+        lat=lat,
+        commune_code=_commune_code(row["code_commune"]),
+        cost=_as_count(row["cout_eur"], "cout_eur"),
+        cumulative_cost=_as_count(row["cout_cumule_eur"], "cout_cumule_eur"),
+        population_gained=_as_count(row["pop_nouvelle"], "pop_nouvelle"),
+        score=_as_number(row["score"], "score"),
+        adequation=_as_fraction(row["adequation"], "adequation"),
+        cars_avoided=_as_count(row["voitures_evitees"], "voitures_evitees"),
     )
+
+
+def _check_scenario(perimeter: Perimeter, budget: int, rows: list[PrecomputedRecommendation]) -> None:
+    name = f"{RECOMMENDATIONS_FILE} scenario {perimeter.value}/{budget}"
+    ranks = [r.rank for r in rows]
+    if ranks != list(range(1, len(rows) + 1)):
+        raise DataLoadError(f"{name}: ranks must run from 1 to {len(rows)} without gaps, got {ranks}")
+    _check_unique(name, [r.location_id for r in rows], "id_candidat")
+    total = 0
+    for r in rows:
+        total += r.cost
+        if r.cumulative_cost != total:
+            raise DataLoadError(f"{name} rank {r.rank}: cout_cumule_eur is {r.cumulative_cost}, expected {total}")
+    if total > budget:
+        raise DataLoadError(f"{name}: total cost {total} exceeds the budget")
+
+
+def _recommendations(rows: list[dict]) -> tuple[PrecomputedRecommendation, ...]:
+    recommendations = sorted(
+        _convert(RECOMMENDATIONS_FILE, rows, _recommendation),
+        key=lambda r: (r.perimeter.value, r.budget, r.rank),
+    )
+    scenarios: dict[tuple[Perimeter, int], list[PrecomputedRecommendation]] = defaultdict(list)
+    for r in recommendations:
+        scenarios[(r.perimeter, r.budget)].append(r)
+    for (perimeter, budget), scenario in scenarios.items():
+        _check_scenario(perimeter, budget, scenario)
+    return tuple(recommendations)
+
+
+def _updated_at(row: dict) -> datetime:
+    value = row["date_maj"]
+    updated_at = value if isinstance(value, datetime) else datetime.fromisoformat(_as_text(value, "date_maj"))
+    if updated_at.tzinfo is None:
+        raise ValueError(f"'date_maj' must include a timezone, got {value!r}")
+    return updated_at
+
+
+def _meta(rows: list[dict]) -> tuple[datetime, int]:
+    if not rows:
+        raise DataLoadError(f"{META_FILE} has no rows")
+    radii = set(_convert(META_FILE, rows, lambda row: _as_count(row["rayon_m"], "rayon_m")))
+    if len(radii) != 1 or 0 in radii:
+        raise DataLoadError(f"{META_FILE} must define a single positive rayon_m, got {sorted(radii)}")
+    return max(_convert(META_FILE, rows, _updated_at)), radii.pop()
 
 
 def load_prepared(data_dir: Path, coverage_thresholds: CoverageThresholds | None = None) -> Dataset:
-    zone_rows, _ = _read(data_dir / ZONES_FILE, ZONE_COLUMNS)
-    station_rows, station_columns = _read(data_dir / STATIONS_FILE, STATION_COLUMNS)
-    candidates_path = data_dir / CANDIDATES_FILE
-    candidate_rows = _read(candidates_path, CANDIDATE_COLUMNS)[0] if candidates_path.exists() else []
+    zone_rows, zone_columns = _read(data_dir / ZONES_FILE, ZONE_COLUMNS)
+    station_rows, _ = _read(data_dir / STATIONS_FILE, STATION_COLUMNS)
+    recommendation_rows, _ = _read(data_dir / RECOMMENDATIONS_FILE, RECOMMENDATION_COLUMNS)
+    meta_rows, _ = _read(data_dir / META_FILE, META_COLUMNS)
 
-    dates = [d for d in (_collected_at(zone_rows), _collected_at(station_rows)) if d]
+    stations = _convert(STATIONS_FILE, station_rows, _station)
+    _check_unique(STATIONS_FILE, [s.station_id for s in stations], "id_station")
+    option_columns = _option_columns(zone_columns)
+    _check_option_coverage(option_columns, stations)
+    zones = _convert(ZONES_FILE, zone_rows, lambda row: _zone(row, option_columns))
+    _check_unique(ZONES_FILE, [z.zone_id for z in zones], "id_carreau")
+    collected_at, radius = _meta(meta_rows)
+
+    grid = ZoneGrid(zones)
+    recommendations, mismatches = with_visible_gains(_recommendations(recommendation_rows), grid, radius)
+    if mismatches:
+        logger.warning("pop_nouvelle could not be reproduced from %s for %d of %d recommendations; "
+                       "the squares table may be incomplete (examples: %s)", ZONES_FILE, len(mismatches),
+                       len(recommendations), "; ".join(mismatches[:MAX_LOGGED_EXAMPLES]))
+
     return Dataset(
         mode=DataMode.real,
-        zones=_convert(ZONES_FILE, zone_rows, _zone),
-        stations=_stations(station_rows, station_columns),
-        candidates=_convert(CANDIDATES_FILE, candidate_rows, _candidate),
-        collected_at=max(dates) if dates else None,
+        zones=zones,
+        stations=with_served_population(stations, grid, radius),
+        recommendations=recommendations,
+        collected_at=collected_at,
         coverage_thresholds=coverage_thresholds,
+        areas=COVERED_AREAS,
     )

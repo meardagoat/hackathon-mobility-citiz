@@ -5,13 +5,14 @@ from app.data.models import Dataset
 from app.geo import BBox
 from app.schemas import Area, PopulationGroupBy, PopulationStatsResponse, SummaryResponse, parse_bbox
 from app.services import statistics_service
+from app.validation import supported_area
 
 router = APIRouter(prefix="/statistics", tags=["statistics"])
 
 
 @router.get("/summary", response_model=SummaryResponse)
 def get_summary(
-    area: Area = Query(Area.bordeaux_metropole),
+    area: Area = Depends(supported_area),
     bbox: BBox | None = Depends(parse_bbox),
     dataset: Dataset = Depends(get_dataset),
 ) -> SummaryResponse:
@@ -20,7 +21,7 @@ def get_summary(
 
 @router.get("/population", response_model=PopulationStatsResponse)
 def get_population(
-    area: Area = Query(Area.bordeaux_metropole),
+    area: Area = Depends(supported_area),
     bbox: BBox | None = Depends(parse_bbox),
     group_by: PopulationGroupBy = Query(PopulationGroupBy.coverage_level),
     dataset: Dataset = Depends(get_dataset),

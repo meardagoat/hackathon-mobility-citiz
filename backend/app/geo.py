@@ -1,4 +1,6 @@
+import math
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -60,6 +62,25 @@ def parent_cell(cell_id: str, size: int) -> GridCell:
 @lru_cache
 def _to_wgs84(epsg: int) -> Transformer:
     return Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
+
+
+@lru_cache
+def _from_wgs84(epsg: int) -> Transformer:
+    return Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)
+
+
+def to_projected(lon: float, lat: float, epsg: int) -> tuple[float, float]:
+    return _from_wgs84(epsg).transform(lon, lat)
+
+
+def cells_within(x: float, y: float, radius: float, size: int) -> Iterator[tuple[int, int]]:
+    half = size / 2
+    first_east = math.floor((x - radius - half) / size) * size
+    first_north = math.floor((y - radius - half) / size) * size
+    for east in range(first_east, math.floor(x + radius - half) + 1, size):
+        for north in range(first_north, math.floor(y + radius - half) + 1, size):
+            if (east + half - x) ** 2 + (north + half - y) ** 2 <= radius ** 2:
+                yield north, east
 
 
 def _project(epsg: int, east: float, north: float) -> Position:

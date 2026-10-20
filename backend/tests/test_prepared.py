@@ -1,117 +1,302 @@
-import logging
 from datetime import datetime, timezone
 
 import pyarrow as pa
-import pyarrow.parquet as pq
 import pytest
 
 from app.config import DataMode, Settings, settings_from_env
 from app.coverage_levels import CoverageThresholds
 from app.data import load_dataset
-from app.data.models import EquipmentType
+from app.data.models import EquipmentType, Perimeter
 from app.data.prepared import DataLoadError, load_prepared
 from app.station_types import StationSource, StationType
-
-ZONES = {
-    "zone_id": ["CRS3035RES200mN2473800E3486600", "CRS3035RES200mN2473800E3486800"],
-    "population": [412.4, 0.6],
-    "is_estimated": [False, True],
-    "commune_codes": [["33063"], ["33063", "33069"]],
-    "date_collecte": ["2026-10-19T08:00:00Z", "2026-10-19T09:00:00Z"],
-}
-
-STATIONS = {
-    "source": ["gtfs", "gtfs", "gbfs", "gbfs"],
-    "resource_id": ["81234", "81234", "555", "556"],
-    "native_id": ["BDX:1", "BDX:2", "st-1", "st-2"],
-    "name": ["Stop 1", "Stop 2", "Citiz A", "Bike B"],
-    "operator": ["TBM", "TBM", "Citiz", "V3"],
-    "lon": [-0.5745, -0.5750, -0.5720, -0.5730],
-    "lat": [44.8445, 44.8440, 44.8452, 44.8448],
-    "route_types": [["3", "0"], ["99"], None, None],
-    "form_factors": [None, None, ["car"], ["bicycle", "hoverboard"]],
-    "is_citiz": [None, None, True, False],
-    "capacity": [None, None, 2, 20],
-}
-
-CANDIDATES = {
-    "location_id": ["cand-a"],
-    "equipment_type": ["bus_stop"],
-    "lon": [-0.5745],
-    "lat": [44.8445],
-    "cost": [100.0],
-    "population_gained": [50],
-    "estimated_value": [5.0],
-}
-
-
-def _write(path, columns):
-    pq.write_table(pa.table(columns), path)
+from tests.gold import CARREAUX, META, OFFRE_EXISTANTE, RECOMMANDATIONS, ZONE_IDS, write_gold, write_table
 
 
 @pytest.fixture
 def data_dir(tmp_path):
-    _write(tmp_path / "zones.parquet", ZONES)
-    _write(tmp_path / "stations.parquet", STATIONS)
-    return tmp_path
+    return write_gold(tmp_path)
 
 
-def test_load_prepared_without_accessibility_or_candidates(data_dir):
-    ds = load_prepared(data_dir)
-    assert ds.mode is DataMode.real
-    assert len(ds.zones) == 2
-    assert ds.zones[1].commune_codes == ("33063", "33069")
-    assert ds.accessibility_available is False
-    assert ds.recommendations_available is False
-    assert ds.collected_at == datetime(2026, 10, 19, 9, tzinfo=timezone.utc)
+def _replace(columns: dict, column: str, index: int, value) -> dict:
+    values = list(columns[column])
+    values[index] = value
+    return {**columns, column: values}
 
 
-def test_station_mapping_ids_and_unknown_types(data_dir, caplog):
-    with caplog.at_level(logging.WARNING):
-        ds = load_prepared(data_dir)
-    stations = {s.station_id: s for s in ds.stations}
-    assert set(stations) == {"gtfs:81234:BDX:1", "gtfs:81234:BDX:2", "gbfs:555:st-1", "gbfs:556:st-2"}
-    assert stations["gtfs:81234:BDX:1"].modes == (StationType.tram, StationType.bus)
-    assert stations["gtfs:81234:BDX:1"].type is StationType.tram
-    assert stations["gtfs:81234:BDX:2"].type is StationType.other
-    assert stations["gbfs:555:st-1"].type is StationType.citiz
-    assert stations["gbfs:556:st-2"].modes == (StationType.bike, StationType.other)
-    assert stations["gbfs:556:st-2"].source is StationSource.gbfs
-    assert stations["gbfs:556:st-2"].capacity == 20
-    assert "gtfs route_type 99" in caplog.text and "gbfs form_factor hoverboard" in caplog.text
+def _scenario_rows(perimeter: str, budget: int) -> list[int]:
+    return [
+        i for i, (p, b) in enumerate(zip(RECOMMANDATIONS["perimetre"], RECOMMANDATIONS["budget_scenario"]))
+        if p == perimeter and b == budget
+    ]
 
 
-def test_load_prepared_with_accessibility_and_candidates(data_dir):
-    _write(data_dir / "zones.parquet", {
-        **ZONES,
-        "options_count": [3, 0],
-        "options_bus": [2, 0],
-        "options_tram": [1, 0],
-        "accessibility_score": [0.7, 0.0],
-    })
-    _write(data_dir / "candidates.parquet", CANDIDATES)
+def test_load_published_tables(data_dir):
     ds = load_prepared(data_dir, CoverageThresholds(low_max=1, medium_max=3))
+    assert ds.mode is DataMode.real
+    assert len(ds.zones) == 3
+    assert len(ds.stations) == 7
+    assert len(ds.recommendations) == 12
+    assert ds.candidates == ()
     assert ds.accessibility_available is True
-    assert ds.zones[0].options_by_type == {StationType.bus: 2, StationType.tram: 1}
     assert ds.recommendations_available is True
-    assert ds.candidates[0].equipment_type is EquipmentType.bus_stop
+    assert ds.collected_at == datetime(2026, 10, 20, 7, 30, tzinfo=timezone.utc)
     assert ds.coverage_thresholds == CoverageThresholds(low_max=1, medium_max=3)
 
 
-def test_missing_file_is_an_error(tmp_path):
-    with pytest.raises(DataLoadError, match="zones.parquet"):
-        load_prepared(tmp_path)
+def test_zone_mapping(data_dir):
+    zones = {z.zone_id: z for z in load_prepared(data_dir).zones}
+    assert list(zones) == ZONE_IDS
+    first, masked = zones[ZONE_IDS[0]], zones[ZONE_IDS[2]]
+    assert first.population == 412
+    assert first.is_estimated is False
+    assert first.commune_codes == ("33063",)
+    assert first.options_count == 6
+    assert first.options_by_type == {
+        StationType.bus: 2,
+        StationType.tram: 1,
+        StationType.metro: 0,
+        StationType.train: 1,
+        StationType.ferry: 0,
+        StationType.bike: 1,
+        StationType.citiz: 1,
+    }
+    assert first.accessibility_score is None
+    assert masked.is_estimated is True
+    assert masked.commune_codes == ("33069",)
 
 
-def test_missing_column_is_an_error(data_dir):
-    _write(data_dir / "stations.parquet", {k: v for k, v in STATIONS.items() if k != "operator"})
-    with pytest.raises(DataLoadError, match="operator"):
+def test_station_mapping_preserves_ids(data_dir):
+    stations = load_prepared(data_dir).stations
+    assert [s.station_id for s in stations] == OFFRE_EXISTANTE["id_station"]
+    assert [s.type for s in stations] == [
+        StationType.tram,
+        StationType.bus,
+        StationType.train,
+        StationType.ferry,
+        StationType.metro,
+        StationType.bike,
+        StationType.citiz,
+    ]
+    assert all(s.modes == (s.type,) for s in stations)
+    assert [s.source for s in stations] == [StationSource.gtfs] * 5 + [StationSource.gbfs] * 2
+    citiz = stations[-1]
+    assert (citiz.name, citiz.operator, citiz.lon, citiz.lat) == ("Gambetta", "Citiz Bordeaux", -0.5806, 44.8412)
+    assert citiz.population_served == 0
+    assert citiz.capacity is None
+    assert stations[0].population_served == OFFRE_EXISTANTE["pop_desservie"][0] - CARREAUX["population"][2]
+
+
+def test_recommendation_mapping(data_dir):
+    recommendations = load_prepared(data_dir).recommendations
+    keys = [(r.perimeter, r.budget, r.rank) for r in recommendations]
+    assert keys == sorted(keys, key=lambda k: (k[0].value, k[1], k[2]))
+    first = recommendations[0]
+    assert (first.perimeter, first.budget, first.rank) == (Perimeter.citiz, 100_000, 1)
+    assert first.location_id == f"citiz_{ZONE_IDS[2]}"
+    assert first.equipment_type is EquipmentType.citiz_station
+    assert first.commune_code == "33069"
+    assert (first.cost, first.cumulative_cost) == (34_000, 34_000)
+    assert first.population_gained == 43 - CARREAUX["population"][2]
+    assert (first.score, first.adequation, first.cars_avoided) == (100.0, 0.8, 8)
+    types = {r.equipment_type for r in recommendations if r.perimeter is Perimeter.all_types}
+    assert types == set(EquipmentType)
+
+
+def test_loading_twice_gives_the_same_dataset(data_dir):
+    first, second = load_prepared(data_dir), load_prepared(data_dir)
+    assert first.zones == second.zones
+    assert first.stations == second.stations
+    assert first.recommendations == second.recommendations
+    assert first.collected_at == second.collected_at
+
+
+@pytest.mark.parametrize("name", ["carreaux", "offre_existante", "recommandations", "meta"])
+def test_missing_file_is_an_error(data_dir, name):
+    (data_dir / f"{name}.parquet").unlink()
+    with pytest.raises(DataLoadError, match=f"missing prepared data file: .*{name}.parquet"):
         load_prepared(data_dir)
 
 
-def test_unknown_source_is_an_error(data_dir):
-    _write(data_dir / "stations.parquet", {**STATIONS, "source": ["gtfs", "gtfs", "gbfs", "osm"]})
-    with pytest.raises(DataLoadError, match="osm"):
+@pytest.mark.parametrize(
+    ("name", "columns", "column"),
+    [
+        ("carreaux", CARREAUX, "donnee_masquee"),
+        ("carreaux", CARREAUX, "nb_options"),
+        ("offre_existante", OFFRE_EXISTANTE, "code_commune"),
+        ("offre_existante", OFFRE_EXISTANTE, "pop_desservie"),
+        ("recommandations", RECOMMANDATIONS, "cout_cumule_eur"),
+        ("recommandations", RECOMMANDATIONS, "perimetre"),
+        ("meta", META, "date_maj"),
+    ],
+)
+def test_missing_column_is_an_error(data_dir, name, columns, column):
+    write_table(data_dir, name, {k: v for k, v in columns.items() if k != column})
+    with pytest.raises(DataLoadError, match=f"{name}.parquet is missing columns: \\['{column}'\\]"):
+        load_prepared(data_dir)
+
+
+@pytest.mark.parametrize(
+    ("name", "columns", "column", "arrow_type"),
+    [
+        ("carreaux", CARREAUX, "population", pa.int64()),
+        ("offre_existante", OFFRE_EXISTANTE, "nom", pa.string()),
+        ("recommandations", RECOMMANDATIONS, "rang", pa.int64()),
+    ],
+)
+def test_null_required_value_is_an_error(data_dir, name, columns, column, arrow_type):
+    values = list(columns[column])
+    values[1] = None
+    write_table(data_dir, name, {**columns, column: pa.array(values, type=arrow_type)})
+    with pytest.raises(DataLoadError, match=f"{name}.parquet row 1: required column '{column}' is null"):
+        load_prepared(data_dir)
+
+
+@pytest.mark.parametrize("zone_id", ["BAD_ID", "CRS3035RES1000mN2473000E3486000"])
+def test_invalid_zone_id_is_an_error(data_dir, zone_id):
+    write_table(data_dir, "carreaux", _replace(CARREAUX, "id_carreau", 1, zone_id))
+    with pytest.raises(DataLoadError, match=f"carreaux.parquet row 1: .*{zone_id}"):
+        load_prepared(data_dir)
+
+
+def test_duplicate_zone_id_is_an_error(data_dir):
+    write_table(data_dir, "carreaux", _replace(CARREAUX, "id_carreau", 1, ZONE_IDS[0]))
+    with pytest.raises(DataLoadError, match="carreaux.parquet row 1: duplicate id_carreau"):
+        load_prepared(data_dir)
+
+
+@pytest.mark.parametrize("values", [[0, 0, 1], ["false", "false", "true"]])
+def test_non_boolean_masking_flag_is_an_error(data_dir, values):
+    write_table(data_dir, "carreaux", {**CARREAUX, "donnee_masquee": values})
+    with pytest.raises(DataLoadError, match="'donnee_masquee' must be a boolean"):
+        load_prepared(data_dir)
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "message"),
+    [
+        ("population", -1, "'population' must be a non-negative integer"),
+        ("nb_bus", 2.5, "'nb_bus' must be a non-negative integer"),
+        ("nb_options", 7, "'nb_options' is 7 but the per-type columns sum to 6"),
+        ("code_commune", "3306", "'code_commune' must be a 5-character INSEE code"),
+    ],
+)
+def test_invalid_zone_value_is_an_error(data_dir, column, value, message):
+    write_table(data_dir, "carreaux", _replace(CARREAUX, column, 0, value))
+    with pytest.raises(DataLoadError, match=f"carreaux.parquet row 0: {message}"):
+        load_prepared(data_dir)
+
+
+def test_unknown_option_column_is_an_error(data_dir):
+    write_table(data_dir, "carreaux", {**CARREAUX, "nb_funiculaire": [0, 0, 0]})
+    with pytest.raises(DataLoadError, match="unknown station type 'funiculaire'"):
+        load_prepared(data_dir)
+
+
+def test_missing_option_column_for_a_present_station_type_is_an_error(data_dir):
+    write_table(data_dir, "carreaux", {k: v for k, v in CARREAUX.items() if k != "nb_bateau"})
+    with pytest.raises(DataLoadError, match="missing option columns .*\\['nb_bateau'\\]"):
+        load_prepared(data_dir)
+
+
+def test_unknown_station_type_is_an_error(data_dir):
+    write_table(data_dir, "offre_existante", _replace(OFFRE_EXISTANTE, "type", 2, "funiculaire"))
+    with pytest.raises(DataLoadError, match="offre_existante.parquet row 2: unknown station type 'funiculaire'"):
+        load_prepared(data_dir)
+
+
+@pytest.mark.parametrize("station_id", ["osm_123", "gtfs-123", "123"])
+def test_unknown_station_id_prefix_is_an_error(data_dir, station_id):
+    write_table(data_dir, "offre_existante", _replace(OFFRE_EXISTANTE, "id_station", 0, station_id))
+    with pytest.raises(DataLoadError, match=f"offre_existante.parquet row 0: id_station must start with .*{station_id}"):
+        load_prepared(data_dir)
+
+
+def test_duplicate_station_id_is_an_error(data_dir):
+    write_table(data_dir, "offre_existante", _replace(OFFRE_EXISTANTE, "id_station", 1, OFFRE_EXISTANTE["id_station"][0]))
+    with pytest.raises(DataLoadError, match="offre_existante.parquet row 1: duplicate id_station"):
+        load_prepared(data_dir)
+
+
+def test_projected_coordinates_are_an_error(data_dir):
+    write_table(data_dir, "offre_existante", _replace(OFFRE_EXISTANTE, "lon", 0, 3486700.0))
+    with pytest.raises(DataLoadError, match="offre_existante.parquet row 0: lon/lat must be WGS84 degrees"):
+        load_prepared(data_dir)
+
+
+def test_rank_gap_is_an_error(data_dir):
+    row = _scenario_rows("tous", 100_000)[2]
+    write_table(data_dir, "recommandations", _replace(RECOMMANDATIONS, "rang", row, 4))
+    with pytest.raises(DataLoadError, match="scenario tous/100000: ranks must run from 1 to 3 without gaps, got \\[1, 2, 4\\]"):
+        load_prepared(data_dir)
+
+
+def test_duplicate_rank_is_an_error(data_dir):
+    row = _scenario_rows("citiz", 250_000)[2]
+    write_table(data_dir, "recommandations", _replace(RECOMMANDATIONS, "rang", row, 2))
+    with pytest.raises(DataLoadError, match="scenario citiz/250000: ranks must run .* got \\[1, 2, 2\\]"):
+        load_prepared(data_dir)
+
+
+def test_wrong_cumulative_cost_is_an_error(data_dir):
+    row = _scenario_rows("tous", 250_000)[1]
+    write_table(data_dir, "recommandations", _replace(RECOMMANDATIONS, "cout_cumule_eur", row, 34_000))
+    with pytest.raises(DataLoadError, match="scenario tous/250000 rank 2: cout_cumule_eur is 34000, expected 49000"):
+        load_prepared(data_dir)
+
+
+def test_scenario_over_budget_is_an_error(data_dir):
+    rows = _scenario_rows("tous", 100_000)
+    columns = {**RECOMMANDATIONS, "budget_scenario": [
+        60_000 if i in rows else b for i, b in enumerate(RECOMMANDATIONS["budget_scenario"])
+    ]}
+    write_table(data_dir, "recommandations", columns)
+    with pytest.raises(DataLoadError, match="scenario tous/60000: total cost 64000 exceeds the budget"):
+        load_prepared(data_dir)
+
+
+def test_duplicate_candidate_in_scenario_is_an_error(data_dir):
+    rows = _scenario_rows("citiz", 100_000)
+    duplicate = RECOMMANDATIONS["id_candidat"][rows[0]]
+    write_table(data_dir, "recommandations", _replace(RECOMMANDATIONS, "id_candidat", rows[1], duplicate))
+    with pytest.raises(DataLoadError, match="scenario citiz/100000 row 1: duplicate id_candidat"):
+        load_prepared(data_dir)
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "message"),
+    [
+        ("perimetre", "velo", "'velo' is not a valid Perimeter"),
+        ("type", "tram", "unknown equipment type 'tram'"),
+        ("adequation", 1.5, "'adequation' must be between 0 and 1"),
+        ("cout_eur", 34_000.5, "'cout_eur' must be a non-negative integer"),
+    ],
+)
+def test_invalid_recommendation_value_is_an_error(data_dir, column, value, message):
+    write_table(data_dir, "recommandations", _replace(RECOMMANDATIONS, column, 0, value))
+    with pytest.raises(DataLoadError, match=f"recommandations.parquet row 0: {message}"):
+        load_prepared(data_dir)
+
+
+def test_equipment_outside_perimeter_is_an_error(data_dir):
+    row = _scenario_rows("citiz", 100_000)[0]
+    write_table(data_dir, "recommandations", _replace(RECOMMANDATIONS, "type", row, "velo"))
+    with pytest.raises(DataLoadError, match=f"row {row}: equipment type 'velo' is outside perimeter 'citiz'"):
+        load_prepared(data_dir)
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [("2026-10-20T07:30:00", "must include a timezone"), ("yesterday", "Invalid isoformat")],
+)
+def test_invalid_update_date_is_an_error(data_dir, value, message):
+    write_table(data_dir, "meta", {**META, "date_maj": [value]})
+    with pytest.raises(DataLoadError, match=f"meta.parquet row 0: .*{message}"):
+        load_prepared(data_dir)
+
+
+def test_empty_meta_is_an_error(data_dir):
+    write_table(data_dir, "meta", {"date_maj": pa.array([], type=pa.string()), "rayon_m": pa.array([], type=pa.int64())})
+    with pytest.raises(DataLoadError, match="meta.parquet has no rows"):
         load_prepared(data_dir)
 
 
@@ -142,119 +327,3 @@ def test_settings_reject_unknown_mode(monkeypatch):
     monkeypatch.setenv("DATA_MODE", "fabric")
     with pytest.raises(ValueError):
         settings_from_env()
-
-
-def _gbfs_stations(**overrides):
-    columns = {
-        "source": ["gbfs", "gbfs"],
-        "resource_id": ["555", "557"],
-        "native_id": ["citiz-1", "car-1"],
-        "name": ["Citiz A", "Car B"],
-        "operator": ["Citiz", "Other"],
-        "lon": [-0.5720, -0.5725],
-        "lat": [44.8452, 44.8450],
-        "form_factors": [["car"], ["car"]],
-        "is_citiz": [True, False],
-    }
-    columns.update(overrides)
-    return {k: v for k, v in columns.items() if v is not None}
-
-
-def _gtfs_stations(route_types):
-    return {
-        "source": ["gtfs"] * len(route_types),
-        "resource_id": ["81234"] * len(route_types),
-        "native_id": [f"S{i}" for i in range(len(route_types))],
-        "name": [f"Stop {i}" for i in range(len(route_types))],
-        "operator": ["TBM"] * len(route_types),
-        "lon": [-0.5745] * len(route_types),
-        "lat": [44.8445] * len(route_types),
-        "route_types": pa.array(route_types, type=pa.list_(pa.string())),
-    }
-
-
-def test_citiz_and_carsharing_classification(data_dir):
-    _write(data_dir / "stations.parquet", _gbfs_stations())
-    types = {s.station_id: s.type for s in load_prepared(data_dir).stations}
-    assert types == {"gbfs:555:citiz-1": StationType.citiz, "gbfs:557:car-1": StationType.carsharing}
-
-
-def test_missing_is_citiz_column_is_an_error(data_dir):
-    _write(data_dir / "stations.parquet", _gbfs_stations(is_citiz=None))
-    with pytest.raises(DataLoadError, match="gbfs rows but is missing columns: \\['is_citiz'\\]"):
-        load_prepared(data_dir)
-
-
-def test_null_is_citiz_is_an_error(data_dir):
-    _write(data_dir / "stations.parquet", _gbfs_stations(is_citiz=[True, None]))
-    with pytest.raises(DataLoadError, match="row 1: required column 'is_citiz' is null"):
-        load_prepared(data_dir)
-
-
-def test_non_boolean_is_citiz_is_an_error(data_dir):
-    _write(data_dir / "stations.parquet", _gbfs_stations(is_citiz=["False", "True"]))
-    with pytest.raises(DataLoadError, match="'is_citiz' must be a boolean"):
-        load_prepared(data_dir)
-
-
-def test_gtfs_only_file_does_not_need_gbfs_columns(data_dir):
-    _write(data_dir / "stations.parquet", _gtfs_stations([["3"]]))
-    assert [s.type for s in load_prepared(data_dir).stations] == [StationType.bus]
-
-
-def test_missing_route_types_column_is_an_error(data_dir):
-    columns = _gtfs_stations([["3"]])
-    del columns["route_types"]
-    _write(data_dir / "stations.parquet", columns)
-    with pytest.raises(DataLoadError, match="gtfs rows but is missing columns: \\['route_types'\\]"):
-        load_prepared(data_dir)
-
-
-def test_route_types_recognised_unknown_empty_and_missing(data_dir, caplog):
-    _write(data_dir / "stations.parquet", _gtfs_stations([["3"], ["99"], [], None]))
-    with caplog.at_level(logging.WARNING):
-        stations = load_prepared(data_dir).stations
-    assert [s.type for s in stations] == [StationType.bus, StationType.other, StationType.other, StationType.other]
-    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
-    assert len(warnings) == 1
-    message = warnings[0].getMessage()
-    assert "'gtfs route_type 99': 1" in message
-    assert "'gtfs stop without route_types': 2" in message
-    assert "gtfs:81234:S1" in message and "gtfs:81234:S2" in message
-
-
-def test_valid_zone_ids_load(data_dir):
-    assert [z.zone_id for z in load_prepared(data_dir).zones] == ZONES["zone_id"]
-
-
-@pytest.mark.parametrize("zone_id", ["BAD_ID", "CRS3035RES1000mN2473000E3486000"])
-def test_invalid_zone_id_is_an_error(data_dir, zone_id):
-    _write(data_dir / "zones.parquet", {**ZONES, "zone_id": [ZONES["zone_id"][0], zone_id]})
-    with pytest.raises(DataLoadError, match=f"zones.parquet row 1: .*{zone_id}"):
-        load_prepared(data_dir)
-
-
-def test_non_boolean_is_estimated_is_an_error(data_dir):
-    _write(data_dir / "zones.parquet", {**ZONES, "is_estimated": [0, 1]})
-    with pytest.raises(DataLoadError, match="'is_estimated' must be a boolean"):
-        load_prepared(data_dir)
-
-
-@pytest.mark.parametrize(
-    ("file", "columns", "column"),
-    [
-        ("zones.parquet", {**ZONES, "population": [412.4, None]}, "population"),
-        ("stations.parquet", {**STATIONS, "name": ["Stop 1", None, "Citiz A", "Bike B"]}, "name"),
-        ("candidates.parquet", {**CANDIDATES, "cost": pa.array([None], type=pa.float64())}, "cost"),
-    ],
-)
-def test_null_required_value_is_an_error(data_dir, file, columns, column):
-    _write(data_dir / file, columns)
-    with pytest.raises(DataLoadError, match=f"{file} row \\d+: required column '{column}' is null"):
-        load_prepared(data_dir)
-
-
-def test_invalid_candidate_value_is_an_error(data_dir):
-    _write(data_dir / "candidates.parquet", {**CANDIDATES, "equipment_type": ["rocket_launcher"]})
-    with pytest.raises(DataLoadError, match="candidates.parquet row 0: 'rocket_launcher'"):
-        load_prepared(data_dir)

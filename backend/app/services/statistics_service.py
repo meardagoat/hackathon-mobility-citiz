@@ -15,6 +15,7 @@ from app.schemas import (
 )
 from app.services.selection import (
     build_meta,
+    masked_count,
     select_stations,
     select_zones,
     share,
@@ -37,20 +38,20 @@ def population_by_level(ds: Dataset, zones: list[Zone]) -> dict[CoverageLevel, i
         return None
     result = {level: 0 for level in CoverageLevel}
     for zone in zones:
-        result[classify(zone.options_count, ds.coverage_thresholds)] += zone_population(zone)
+        result[classify(zone.options_count, ds.coverage_thresholds)] += zone_population(zone) or 0
     return result
 
 
 def population_with_type(zones: list[Zone], station_type: StationType) -> int | None:
     if any(z.options_by_type is None or station_type not in z.options_by_type for z in zones):
         return None
-    return sum(zone_population(z) for z in zones if z.options_by_type[station_type] > 0)
+    return total_population(z for z in zones if z.options_by_type[station_type] > 0)
 
 
 def population_with_any_option(ds: Dataset, zones: list[Zone]) -> int | None:
     if not ds.accessibility_available:
         return None
-    return sum(zone_population(z) for z in zones if z.options_count > 0)
+    return total_population(z for z in zones if z.options_count > 0)
 
 
 def get_summary(ds: Dataset, area: Area, bbox: BBox | None = None) -> SummaryResponse:
@@ -73,6 +74,7 @@ def get_summary(ds: Dataset, area: Area, bbox: BBox | None = None) -> SummaryRes
         ),
         population_total=population,
         zones_count=len(zones),
+        masked_zones_count=masked_count(zones),
         stations_count=len(stations),
         stations_by_type={t: counts[t] for t in StationType},
         citiz=CitizSummary(
@@ -89,7 +91,8 @@ def get_summary(ds: Dataset, area: Area, bbox: BBox | None = None) -> SummaryRes
 
 def _group(key: str, zones: list[Zone], total: int) -> PopulationGroup:
     population = total_population(zones)
-    return PopulationGroup(key=key, population=population, share=share(population, total), zones_count=len(zones))
+    return PopulationGroup(key=key, population=population, share=share(population, total), zones_count=len(zones),
+                           masked_zones_count=masked_count(zones))
 
 
 def _by_commune(zones: list[Zone], total: int) -> list[PopulationGroup]:
@@ -132,5 +135,6 @@ def get_population_stats(
         available=available,
         additive=group_by is not PopulationGroupBy.station_type,
         population_total=total,
+        masked_zones_count=masked_count(zones),
         groups=groups,
     )
