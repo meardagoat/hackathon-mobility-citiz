@@ -27,8 +27,9 @@ export const TRANSPORT_ICONS: Record<TransportType, string> = {
   scooter: '🛴',
 };
 
-export const MAP_DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
-export const MAP_DEFAULT_ZOOM = 11;
+// Centré sur Bordeaux Métropole (cas d'étude du hackathon)
+export const MAP_DEFAULT_CENTER: [number, number] = [44.8378, -0.5792]; // Bordeaux
+export const MAP_DEFAULT_ZOOM = 12;
 
 export const COLORS = {
   sidebar: '#111111',
@@ -42,7 +43,9 @@ export const COLORS = {
   textSecondary: '#6b7280',
 } as const;
 
+// Régions disponibles (Bordeaux Métropole par défaut pour le hackathon)
 export const MOCK_REGIONS = [
+  { id: 'bordeaux-metropole', name: 'Bordeaux Métropole' }, // ⭐ Cas d'étude principal
   { id: 'ile-de-france', name: 'Île-de-France' },
   { id: 'auvergne-rhone-alpes', name: 'Auvergne-Rhône-Alpes' },
   { id: 'provence-alpes-cote-azur', name: 'Provence-Alpes-Côte d\'Azur' },
