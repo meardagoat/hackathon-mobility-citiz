@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import { chargerCarreaux, COULEUR_STATION, type Carreau } from '@/lib/explorer';
+import { chargerCarreaux, COULEUR_STATION, couvertureConnue, type Carreau } from '@/lib/explorer';
 import { communeName } from '@/lib/communes';
 import { STATION_LABELS } from '@/lib/constants';
 import { cn, formatNumber } from '@/lib/utils';
@@ -27,7 +27,7 @@ function parCommune(carreaux: Carreau[]): Commune[] {
     if (c.population === null || !c.commune) continue; // carreaux masqués exclus, comme dans l'API
     const k = m.get(c.commune) ?? { code: c.commune, nom: communeName(c.commune), pop: 0, citiz: 0, aucune: 0 };
     k.pop += c.population;
-    if (c.citiz > 0) k.citiz += c.population;
+    if ((c.citiz ?? 0) > 0) k.citiz += c.population;
     if (c.options === 0) k.aucune += c.population;
     m.set(c.commune, k);
   }
@@ -45,6 +45,8 @@ export default function ChiffresPage() {
     chargerCarreaux().then((d) => setCarreaux(d.carreaux)).catch((e: Error) => setErreur(e.message));
   }, []);
 
+  // Sans couverture calculée, les parts « avec Citiz » ou « sans mobilité » n'ont pas de sens : on ne les affiche pas
+  const couverture = useMemo(() => (carreaux ? couvertureConnue(carreaux) : true), [carreaux]);
   const communes = useMemo(() => (carreaux ? parCommune(carreaux) : []), [carreaux]);
   const triees = useMemo(() => {
     const cle: Record<Tri, (c: Commune) => number> = {
@@ -76,8 +78,8 @@ export default function ChiffresPage() {
       <div className="rise mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-[28px] border border-ink/[0.07] bg-ink/[0.07] shadow-soft lg:grid-cols-4" style={{ animationDelay: '0.05s' }}>
         <Cle label="Habitants" valeur={resume ? <AnimatedNumber value={resume.population_total} format={(n) => formatNumber(Math.round(n))} /> : '…'} detail={resume ? `${formatNumber(resume.zones_count)} carreaux, dont ${formatNumber(resume.masked_zones_count)} masqués (non comptés)` : ''} />
         <Cle label="Arrêts et stations" valeur={resume ? <AnimatedNumber value={resume.stations_count} format={(n) => formatNumber(Math.round(n))} /> : '…'} detail="réseau TBM et stations fixes vélo et Citiz" />
-        <Cle label="Une mobilité à 5 min" valeur={resume?.population_with_any_option_share != null ? <AnimatedNumber value={resume.population_with_any_option_share * 100} format={(n) => pct(n / 100)} /> : '…'} detail={resume?.population_with_any_option != null ? `${formatNumber(resume.population_with_any_option)} habitants` : ''} />
-        <Cle accent label="Citiz à 5 min" valeur={resume?.citiz.population_within_5min_share != null ? <AnimatedNumber value={resume.citiz.population_within_5min_share * 100} format={(n) => pct(n / 100)} /> : '…'} detail={resume ? `${resume.citiz.stations_count} stations · ${String(resume.citiz.stations_per_100k_inhabitants ?? '').replace('.', ',')} pour 100 000 hab.` : ''} />
+        <Cle label="Une mobilité à 5 min" valeur={resume?.population_with_any_option_share != null ? <AnimatedNumber value={resume.population_with_any_option_share * 100} format={(n) => pct(n / 100)} /> : resume ? 'n.d.' : '…'} detail={resume?.population_with_any_option != null ? `${formatNumber(resume.population_with_any_option)} habitants` : ''} />
+        <Cle accent label="Citiz à 5 min" valeur={resume?.citiz.population_within_5min_share != null ? <AnimatedNumber value={resume.citiz.population_within_5min_share * 100} format={(n) => pct(n / 100)} /> : resume ? 'n.d.' : '…'} detail={resume ? `${resume.citiz.stations_count} stations · ${String(resume.citiz.stations_per_100k_inhabitants ?? '').replace('.', ',')} pour 100 000 hab.` : ''} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
@@ -89,7 +91,7 @@ export default function ChiffresPage() {
         >
           <div className="mb-5 flex flex-wrap items-center gap-2">
             {([['sansCitiz', 'Habitants sans Citiz'], ['zonesBlanches', 'Zones blanches'], ['population', 'Population']] as [Tri, string][]).map(([t, label]) => (
-              <button key={t} onClick={() => setTri(t)} className={cn('rounded-full px-4 py-1.5 text-sm font-semibold transition', tri === t ? 'bg-teal text-white' : 'bg-ink/[0.04] text-ink-dim hover:text-ink')}>
+              <button key={t} onClick={() => setTri(t)} className={cn('rounded-full px-4 py-1.5 text-sm font-semibold transition', tri === t ? 'bg-teal text-ink' : 'bg-ink/[0.04] text-ink-dim hover:text-ink')}>
                 {label}
               </button>
             ))}
@@ -101,6 +103,8 @@ export default function ChiffresPage() {
           </div>
           {!carreaux ? (
             <Chargement />
+          ) : !couverture ? (
+            <Indisponible />
           ) : (
             <ol className="divide-y divide-ink/[0.06]">
               {triees.map((c, i) => {
@@ -133,7 +137,9 @@ export default function ChiffresPage() {
           {/* Ce qu'il faut retenir */}
           <Panneau delai={0.15} className="bg-teal-tint/50">
             <div className="label-mono mb-3 !text-teal-ink">À retenir</div>
-            {carreaux ? (
+            {carreaux && !couverture ? (
+              <Indisponible />
+            ) : carreaux ? (
               <>
                 <p className="text-2xl font-extrabold leading-tight tracking-tight">
                   {formatNumber(sansCitizTotal)} habitants n’ont pas de Citiz à 5 minutes à pied.
@@ -197,6 +203,10 @@ function Cle({ label, valeur, detail, accent }: { label: string; valeur: React.R
       <div className="mt-1.5 text-xs leading-relaxed text-ink-dim">{detail}</div>
     </div>
   );
+}
+
+function Indisponible() {
+  return <p className="py-6 text-sm text-ink-dim">Couverture non disponible : l’accessibilité n’a pas été calculée pour ces données.</p>;
 }
 
 function Legende({ couleur, children }: { couleur: string; children: React.ReactNode }) {

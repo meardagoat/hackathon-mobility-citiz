@@ -62,7 +62,7 @@ function TopBar() {
               href={item.href}
               className={cn(
                 'rounded-full px-4 py-2 text-sm font-semibold transition-all',
-                active ? 'bg-teal text-white' : 'text-ink-dim hover:bg-ink/[0.04] hover:text-ink',
+                active ? 'bg-teal text-ink' : 'text-ink-dim hover:bg-ink/[0.04] hover:text-ink',
               )}
             >
               {item.label}

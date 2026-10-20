@@ -30,7 +30,7 @@ export function LayerPanel({ mode, onMode, types, onTypes }: Props) {
           <button
             key={m}
             onClick={() => onMode(m)}
-            className={cn('flex-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-all', mode === m ? 'bg-teal text-white shadow-soft' : 'text-ink-dim hover:text-ink')}
+            className={cn('flex-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-all', mode === m ? 'bg-teal text-ink shadow-soft' : 'text-ink-dim hover:text-ink')}
           >
             {label}
           </button>

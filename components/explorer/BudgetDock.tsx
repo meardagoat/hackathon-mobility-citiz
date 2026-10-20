@@ -84,7 +84,7 @@ export function BudgetDock(p: Props) {
                 onClick={() => p.onPerimetre(per)}
                 className={cn(
                   'rounded-xl px-4 py-2 text-sm font-medium transition-all',
-                  p.perimetre === per ? 'bg-teal text-white shadow-soft' : 'text-ink-dim hover:text-ink',
+                  p.perimetre === per ? 'bg-teal text-ink shadow-soft' : 'text-ink-dim hover:text-ink',
                 )}
               >
                 {per === 'citiz' ? 'Citiz seul' : 'Citiz + bus + vélo'}

@@ -102,19 +102,19 @@ export default function ClassementPage() {
       <div className="rise mb-6 flex flex-wrap items-center gap-3" style={{ animationDelay: '0.1s' }}>
         <div className="flex rounded-full bg-ink/[0.04] p-1">
           {BUDGETS.map((b) => (
-            <button key={b} onClick={() => setBudget(b)} className={cn('rounded-full px-4 py-2 text-sm font-semibold transition', b === budget ? 'bg-teal text-white shadow-soft' : 'text-ink-dim hover:text-ink')}>
+            <button key={b} onClick={() => setBudget(b)} className={cn('rounded-full px-4 py-2 text-sm font-semibold transition', b === budget ? 'bg-teal text-ink shadow-soft' : 'text-ink-dim hover:text-ink')}>
               {libelleBudget(b)}
             </button>
           ))}
         </div>
         <div className="flex rounded-full bg-ink/[0.04] p-1">
           {PERIMETRES.map(({ cle, label }) => (
-            <button key={cle} onClick={() => setPerimetre(cle)} className={cn('rounded-full px-4 py-2 text-sm font-semibold transition', cle === perimetre ? 'bg-teal text-white shadow-soft' : 'text-ink-dim hover:text-ink')}>
+            <button key={cle} onClick={() => setPerimetre(cle)} className={cn('rounded-full px-4 py-2 text-sm font-semibold transition', cle === perimetre ? 'bg-teal text-ink shadow-soft' : 'text-ink-dim hover:text-ink')}>
               {label}
             </button>
           ))}
         </div>
-        <Link href="/" className="ml-auto flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-teal-ink transition hover:bg-teal-tint/60">
+        <Link href={`/?budget=${budget}&perimetre=${perimetre}`} className="ml-auto flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-teal-ink transition hover:bg-teal-tint/60">
           Voir sur la carte <ArrowUpRight size={15} />
         </Link>
       </div>

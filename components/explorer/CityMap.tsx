@@ -4,7 +4,7 @@ import maplibregl, { type ExpressionSpecification, type GeoJSONSource, type Map 
 import type { Recommendation, StationType, StationsResponse } from '@/types/api';
 import { COULEUR_EQUIPEMENT, COULEUR_STATION, LIBELLE_EQUIPEMENT, type CarreauxGeoJSON } from '@/lib/explorer';
 import { communeName } from '@/lib/communes';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { escapeHtml, formatCurrency, formatNumber } from '@/lib/utils';
 
 export type Mode = 'acces' | 'citiz';
 
@@ -15,12 +15,15 @@ const VUE_SURVOL = { center: [-0.585, 44.85] as [number, number], zoom: 10.75, p
 
 const HAUTEUR: ExpressionSpecification = ['+', 12, ['*', ['sqrt', ['coalesce', ['get', 'pop'], 36]], 13]];
 
+// Couverture inconnue (null) : gris neutre, jamais confondue avec une zone blanche mesurée
+const INCONNUE: ExpressionSpecification = ['==', ['to-string', ['get', 'opts']], '']; // null ou absent donne ''
+
 function couleur(mode: Mode): ExpressionSpecification {
   const base: ExpressionSpecification =
     mode === 'citiz'
-      ? ['case', ['>', ['get', 'citiz'], 0], '#32b4b5', ['==', ['get', 'opts'], 0], '#ee6352', '#dde4e4']
-      : ['case', ['==', ['get', 'opts'], 0], '#ee6352',
-          ['interpolate', ['linear'], ['get', 'opts'], 1, '#d5eeee', 4, '#9ddedf', 10, '#32b4b5', 25, '#11686c']];
+      ? ['case', INCONNUE, '#e9eded', ['>', ['coalesce', ['get', 'citiz'], 0], 0], '#32b4b5', ['==', ['get', 'opts'], 0], '#ee6352', '#dde4e4']
+      : ['case', INCONNUE, '#e9eded', ['==', ['get', 'opts'], 0], '#ee6352',
+          ['interpolate', ['linear'], ['coalesce', ['get', 'opts'], 0], 1, '#d5eeee', 4, '#9ddedf', 10, '#32b4b5', 25, '#11686c']];
   return ['case', ['boolean', ['feature-state', 'allume'], false], '#2fac66', base];
 }
 
@@ -146,16 +149,19 @@ export default function CityMap({ carreaux, stations, mode, typesVisibles, recos
 
       const bulle = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, maxWidth: '260px' });
       map.on('mousemove', 'carreaux-3d', (e) => {
-        const p = e.features?.[0]?.properties as { pop: number | null; opts: number; citiz: number; commune: string } | undefined;
+        const p = e.features?.[0]?.properties as { pop: number | null; opts: number | null; citiz: number | null; commune: string } | undefined;
         if (!p) return;
         map.getCanvas().style.cursor = 'crosshair';
         const masque = p.pop === null || p.pop === undefined || (p.pop as unknown) === 'null';
         const pop = masque ? '<span style="color:#5d6767">population masquée (secret statistique)</span>' : `<b>${formatNumber(Number(p.pop))}</b> habitants`;
-        const acces = Number(p.opts) === 0
+        const inconnue = p.opts === null || p.opts === undefined || (p.opts as unknown) === 'null';
+        const acces = inconnue
+          ? '<span style="color:#5d6767">couverture non disponible</span>'
+          : Number(p.opts) === 0
           ? '<span style="color:#ee6352;font-weight:600">aucune mobilité à 5 min à pied</span>'
-          : `<b>${p.opts}</b> arrêts ou stations à 5 min${Number(p.citiz) > 0 ? ' · <span style="color:#20a4b0;font-weight:600">dont Citiz</span>' : ''}`;
+          : `<b>${formatNumber(Number(p.opts))}</b> arrêts ou stations à 5 min${Number(p.citiz) > 0 ? ' · <span style="color:#20a4b0;font-weight:600">dont Citiz</span>' : ''}`;
         bulle.setLngLat(e.lngLat)
-          .setHTML(`<div style="font:13px/1.5 var(--font-fira)"><div class="label-mono" style="margin-bottom:4px">${communeName(p.commune)}</div>${pop}<br/>${acces}</div>`)
+          .setHTML(`<div style="font:13px/1.5 var(--font-fira)"><div class="label-mono" style="margin-bottom:4px">${escapeHtml(communeName(p.commune))}</div>${pop}<br/>${acces}</div>`)
           .addTo(map);
       });
       map.on('mouseleave', 'carreaux-3d', () => {
@@ -166,7 +172,7 @@ export default function CityMap({ carreaux, stations, mode, typesVisibles, recos
         const p = e.features?.[0]?.properties as { rang: number; type: keyof typeof LIBELLE_EQUIPEMENT; commune: string; pop: number; cout: number } | undefined;
         if (!p) return;
         bulle.setLngLat(e.lngLat)
-          .setHTML(`<div style="font:13px/1.5 var(--font-fira)"><div class="label-mono" style="color:#2fac66;margin-bottom:4px">N°${p.rang} · ${LIBELLE_EQUIPEMENT[p.type]}</div><b>${communeName(p.commune)}</b><br/>+${formatNumber(Number(p.pop))} habitants · ${formatCurrency(Number(p.cout))}</div>`)
+          .setHTML(`<div style="font:13px/1.5 var(--font-fira)"><div class="label-mono" style="color:#2fac66;margin-bottom:4px">N°${Number(p.rang)} · ${escapeHtml(LIBELLE_EQUIPEMENT[p.type] ?? '')}</div><b>${escapeHtml(communeName(p.commune))}</b><br/>+${formatNumber(Number(p.pop))} habitants · ${formatCurrency(Number(p.cout))}</div>`)
           .addTo(map);
       });
 
@@ -274,13 +280,17 @@ export default function CityMap({ carreaux, stations, mode, typesVisibles, recos
       map.once('moveend', tourner);
     };
     const demarrer = () => {
+      if (!actif || !carte.current) return;
       map.jumpTo({ ...VUE_SURVOL, padding: { top: 0, bottom: 0, left: Math.round(map.getContainer().clientWidth * 0.45), right: 0 } });
       tourner();
     };
     if (map.loaded()) demarrer();
     else map.once('load', demarrer);
+    // Accueil passé avant la fin du chargement : aucun écouteur ne doit reprendre la caméra ensuite
     return () => {
       actif = false;
+      map.off('load', demarrer);
+      map.off('moveend', tourner);
     };
   }, [orbite]);
 
