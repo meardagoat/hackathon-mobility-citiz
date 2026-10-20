@@ -18,10 +18,11 @@ export interface Carreau {
   lon: number;
   lat: number;
   population: number | null; // null : carreau masqué (secret statistique)
-  options: number;
-  citiz: number;
-  bus: number;
-  bike: number;
+  // null : couverture non calculée (différent de 0, mesuré : aucune option)
+  options: number | null;
+  citiz: number | null;
+  bus: number | null;
+  bike: number | null;
   commune: string | null;
 }
 
@@ -31,7 +32,7 @@ export interface CarreauxGeoJSON {
     type: 'Feature';
     id: number;
     geometry: { type: 'Polygon'; coordinates: [number, number][][] };
-    properties: { id: string; pop: number | null; opts: number; citiz: number; commune: string | null };
+    properties: { id: string; pop: number | null; opts: number | null; citiz: number | null; commune: string | null };
   }[];
 }
 
@@ -70,16 +71,17 @@ async function telechargerCarreaux(): Promise<{ carreaux: Carreau[]; geojson: Ca
       const sommets = anneau.slice(0, -1);
       const lon = sommets.reduce((s, c) => s + c[0], 0) / sommets.length;
       const lat = sommets.reduce((s, c) => s + c[1], 0) / sommets.length;
-      const parType = p.options_by_type ?? {};
+      const parType = p.options_by_type;
+      const connue = p.options_count !== null && parType !== null;
       const carreau: Carreau = {
         id: p.zone_id,
         lon,
         lat,
         population: p.population,
-        options: p.options_count ?? 0,
-        citiz: parType.citiz ?? 0,
-        bus: parType.bus ?? 0,
-        bike: parType.bike ?? 0,
+        options: connue ? p.options_count : null,
+        citiz: connue ? parType.citiz ?? 0 : null,
+        bus: connue ? parType.bus ?? 0 : null,
+        bike: connue ? parType.bike ?? 0 : null,
         commune: p.commune_codes[0] ?? null,
       };
       geojson.features.push({
@@ -108,9 +110,9 @@ function distanceM(lon1: number, lat1: number, lon2: number, lat2: number): numb
 }
 
 const DEJA_DESSERVI: Record<EquipmentType, (c: Carreau) => boolean> = {
-  citiz_station: (c) => c.citiz > 0,
-  bus_stop: (c) => c.bus > 0,
-  bike_station: (c) => c.bike > 0,
+  citiz_station: (c) => (c.citiz ?? 0) > 0,
+  bus_stop: (c) => (c.bus ?? 0) > 0,
+  bike_station: (c) => (c.bike ?? 0) > 0,
 };
 
 // Index des carreaux en cases d'environ 1 km pour ne tester que les voisins.
@@ -132,6 +134,11 @@ export function indexer(carreaux: Carreau[]) {
   };
 }
 
+// Couverture connue pour tous les carreaux habités (sinon les diagnostics ne sont pas calculables)
+export function couvertureConnue(carreaux: Carreau[]): boolean {
+  return carreaux.every((c) => c.population === null || c.options !== null);
+}
+
 // Carreaux qu'une recommandation dessert pour la première fois (pour ce type d'équipement).
 export function carreauxAllumes(reco: Recommendation, carreaux: Carreau[], voisins: (lon: number, lat: number) => number[]): number[] {
   const dejaDesservi = DEJA_DESSERVI[reco.equipment_type];
@@ -141,12 +148,17 @@ export function carreauxAllumes(reco: Recommendation, carreaux: Carreau[], voisi
   });
 }
 
-export const COULEUR_STATION: Partial<Record<StationType, string>> = {
+export const COULEUR_STATION: Record<StationType, string> = {
   citiz: '#32b4b5',
   tram: '#5560c9',
+  metro: '#c2410c',
+  train: '#11686c',
   bike: '#f2a33a',
   bus: '#9aa5a5',
   ferry: '#2b8cbe',
+  carsharing: '#8b5cf6',
+  scooter: '#ec4899',
+  other: '#5d6767',
 };
 
 // Ce que le scénario ajoute : vert Citiz pour l'autopartage

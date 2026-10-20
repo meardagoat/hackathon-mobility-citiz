@@ -13,6 +13,7 @@ import type { Mode } from '@/components/explorer/CityMap';
 const CityMap = dynamic(() => import('@/components/explorer/CityMap'), { ssr: false });
 
 const PAS_ANIMATION_MS = 110;
+const BUDGETS = [100_000, 250_000, 500_000, 1_000_000];
 
 // L'accueil ne se joue qu'une fois par visite : revenir sur Explorer depuis une autre page ne le rejoue pas.
 let accueilVu = false;
@@ -22,7 +23,10 @@ export default function ExplorerPage() {
   const [resume, setResume] = useState<SummaryResponse | null>(null);
   const [carreaux, setCarreaux] = useState<{ liste: Carreau[]; geojson: CarreauxGeoJSON } | null>(null);
   const [stations, setStations] = useState<StationsResponse | null>(null);
-  const [erreur, setErreur] = useState<string | null>(null);
+  // Erreurs séparées : un scénario en échec ne doit pas masquer des données de base valides, et inversement
+  const [erreurBase, setErreurBase] = useState<string | null>(null);
+  const [erreurScenario, setErreurScenario] = useState<string | null>(null);
+  const [essai, setEssai] = useState(0);
 
   const [mode, setMode] = useState<Mode>('citiz');
   const [types, setTypes] = useState<StationType[]>(['citiz', 'tram', 'bike']);
@@ -40,14 +44,29 @@ export default function ExplorerPage() {
     setIntro(false);
   }, []);
 
-  // Données de base
+  // Scénario arrivé par lien (« Voir sur la carte » depuis le Classement)
   useEffect(() => {
-    api.summary().then(setResume).catch((e: Error) => setErreur(e.message));
+    const q = new URLSearchParams(window.location.search);
+    const b = Number(q.get('budget'));
+    const p = q.get('perimetre');
+    if (BUDGETS.includes(b)) setBudget(b);
+    if (p === 'citiz' || p === 'tous') {
+      setPerimetre(p);
+      setMode(p === 'tous' ? 'acces' : 'citiz');
+    }
+  }, []);
+
+  // Données de base (et scénario de référence 1 M€ Citiz présenté par l'accueil). Relancées par « Réessayer ».
+  useEffect(() => {
+    setErreurBase(null);
+    const echec = (e: Error) => setErreurBase(e.message);
+    api.summary().then(setResume).catch(echec);
     chargerCarreaux()
       .then(({ carreaux: liste, geojson }) => setCarreaux({ liste, geojson }))
-      .catch((e: Error) => setErreur(e.message));
-    chargerStations().then(setStations).catch((e: Error) => setErreur(e.message));
-  }, []);
+      .catch(echec);
+    chargerStations().then(setStations).catch(echec);
+    chargerScenario(1_000_000, 'citiz').then(setScenarioIntro).catch(echec);
+  }, [essai]);
 
   // Recommandations du scénario (précalculées par le notebook 05, servies par l'API)
   useEffect(() => {
@@ -55,6 +74,7 @@ export default function ExplorerPage() {
     let annule = false;
     const appliquer = (r: RecommendationResponse) => {
       if (annule) return;
+      setErreurScenario(null);
       setResultat(r);
       setVisibles(0);
       setChargement(false);
@@ -64,23 +84,26 @@ export default function ExplorerPage() {
       appliquer(enCache);
       return;
     }
+    // Le plan précédent ne doit pas rester affiché sous un autre budget pendant le chargement ou après un échec
+    setErreurScenario(null);
+    setResultat(null);
+    setVisibles(0);
     setChargement(true);
     chargerScenario(budget, perimetre)
       .then((r) => {
         cache.current.set(cle, r);
-        if (cle === '1000000|citiz') setScenarioIntro(r);
         appliquer(r);
       })
       .catch((e: Error) => {
         if (!annule) {
-          setErreur(e.message);
+          setErreurScenario(e.message);
           setChargement(false);
         }
       });
     return () => {
       annule = true;
     };
-  }, [budget, perimetre]);
+  }, [budget, perimetre, essai]);
 
   // Les balises s'allument une à une, dans l'ordre du classement
   const recos = useMemo(() => resultat?.recommendations ?? [], [resultat]);
@@ -94,10 +117,9 @@ export default function ExplorerPage() {
     if (intro) return;
     const touche = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return;
-      const budgets = [100_000, 250_000, 500_000, 1_000_000];
       if (['1', '2', '3', '4'].includes(e.key)) {
         setFocus(null);
-        setBudget(budgets[Number(e.key) - 1]);
+        setBudget(BUDGETS[Number(e.key) - 1]);
       }
       if (e.key === 'c') {
         setPerimetre('citiz');
@@ -183,9 +205,20 @@ export default function ExplorerPage() {
         </>
       )}
 
-      {erreur && (
-        <div className="glass absolute left-1/2 top-24 z-[1200] -translate-x-1/2 rounded-2xl border-coral/40 px-4 py-3 text-sm text-coral">
-          Données indisponibles : {erreur}
+      {/* Au-dessus de l'accueil (z-1500) : un échec de chargement doit rester visible, avec une sortie */}
+      {(erreurBase || erreurScenario) && (
+        <div role="alert" className="glass absolute left-1/2 top-24 z-[1600] flex w-[min(92vw,560px)] -translate-x-1/2 flex-wrap items-center gap-3 rounded-2xl border-coral/40 px-4 py-3 text-sm">
+          <span className="min-w-0 flex-1 text-[#b3261e]">
+            {erreurBase ? `Données indisponibles : ${erreurBase}` : `Scénario indisponible : ${erreurScenario}`}
+          </span>
+          <button onClick={() => setEssai((n) => n + 1)} className="rounded-full bg-ink px-3.5 py-1.5 text-xs font-semibold text-paper transition hover:bg-ink/80">
+            Réessayer
+          </button>
+          {intro && (
+            <button onClick={terminerIntro} className="rounded-full border border-ink/15 px-3.5 py-1.5 text-xs font-semibold text-ink transition hover:border-ink/40">
+              Passer l’accueil
+            </button>
+          )}
         </div>
       )}
     </div>

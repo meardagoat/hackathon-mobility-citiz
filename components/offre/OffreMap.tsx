@@ -9,6 +9,24 @@ import { formatNumber } from '@/lib/utils';
 const STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 const vide = { type: 'FeatureCollection' as const, features: [] };
 
+// Bulle construite en nœuds DOM : le nom d'un arrêt vient des données et reste du texte
+function contenuBulle(p: { name: string; type: StationType; population_served: number | null }): HTMLElement {
+  const racine = document.createElement('div');
+  racine.style.font = '13px/1.5 var(--font-fira)';
+  const type = document.createElement('div');
+  type.className = 'label-mono';
+  type.style.color = COULEUR_STATION[p.type] ?? '#5d6767';
+  type.style.marginBottom = '3px';
+  type.textContent = STATION_LABELS[p.type] ?? String(p.type);
+  const nom = document.createElement('b');
+  nom.textContent = String(p.name);
+  const pop = document.createElement('div');
+  const inconnue = p.population_served === null || (p.population_served as unknown) === 'null';
+  pop.textContent = inconnue ? 'population non disponible' : `${formatNumber(Number(p.population_served))} habitants à 5 min`;
+  racine.append(type, nom, pop);
+  return racine;
+}
+
 interface Props {
   stations: StationsResponse | null;
   carreaux: CarreauxGeoJSON | null;
@@ -22,8 +40,9 @@ export default function OffreMap({ stations, carreaux, types, choisie, onChoix }
   const conteneur = useRef<HTMLDivElement>(null);
   const carte = useRef<MapLibreMap | null>(null);
   const pret = useRef(false);
-  const etat = useRef({ stations, carreaux, types });
-  etat.current = { stations, carreaux, types };
+  const etat = useRef({ stations, carreaux, types, choisie });
+  etat.current = { stations, carreaux, types, choisie };
+  const precedente = useRef<string | null>(null);
   const onChoixRef = useRef(onChoix);
   onChoixRef.current = onChoix;
 
@@ -72,9 +91,7 @@ export default function OffreMap({ stations, carreaux, types, choisie, onChoix }
         const p = e.features?.[0]?.properties as { name: string; type: StationType; operator: string; population_served: number | null } | undefined;
         if (!p) return;
         map.getCanvas().style.cursor = 'pointer';
-        bulle.setLngLat(e.lngLat)
-          .setHTML(`<div style="font:13px/1.5 var(--font-fira)"><div class="label-mono" style="color:${COULEUR_STATION[p.type] ?? '#5d6767'};margin-bottom:3px">${STATION_LABELS[p.type] ?? p.type}</div><b>${p.name}</b><br/>${p.population_served === null || (p.population_served as unknown) === 'null' ? 'population non disponible' : `${formatNumber(Number(p.population_served))} habitants à 5 min`}</div>`)
-          .addTo(map);
+        bulle.setLngLat(e.lngLat).setDOMContent(contenuBulle(p)).addTo(map);
       });
       map.on('mouseleave', 'stations', () => {
         map.getCanvas().style.cursor = '';
@@ -87,16 +104,19 @@ export default function OffreMap({ stations, carreaux, types, choisie, onChoix }
       });
 
       pret.current = true;
-      const { stations: s, carreaux: c, types: t } = etat.current;
+      const { stations: s, carreaux: c, types: t, choisie: ch } = etat.current;
       if (s) (map.getSource('stations') as GeoJSONSource).setData(s as unknown as GeoJSON.FeatureCollection);
       if (c) (map.getSource('carreaux') as GeoJSONSource).setData(c as unknown as GeoJSON.FeatureCollection);
       map.setFilter('stations', ['in', ['get', 'type'], ['literal', t]]);
+      // Une station choisie dans le Top 10 avant la fin du chargement du fond
+      appliquerChoix(map, ch);
     });
     return () => {
       pret.current = false;
       carte.current = null;
       map.remove();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -114,16 +134,19 @@ export default function OffreMap({ stations, carreaux, types, choisie, onChoix }
     if (map && pret.current) map.setFilter('stations', ['in', ['get', 'type'], ['literal', types]]);
   }, [types]);
 
-  const precedente = useRef<string | null>(null);
+  function appliquerChoix(map: MapLibreMap, ch: StationFeature | null) {
+    if (precedente.current) map.setFeatureState({ source: 'stations', id: precedente.current }, { choisie: false });
+    if (ch) {
+      map.setFeatureState({ source: 'stations', id: ch.properties.station_id }, { choisie: true });
+      map.flyTo({ center: ch.geometry.coordinates as [number, number], zoom: 14.2, offset: [140, 60], duration: 1600, essential: true });
+    }
+    precedente.current = ch?.properties.station_id ?? null;
+  }
+
   useEffect(() => {
     const map = carte.current;
-    if (!map || !pret.current) return;
-    if (precedente.current) map.setFeatureState({ source: 'stations', id: precedente.current }, { choisie: false });
-    if (choisie) {
-      map.setFeatureState({ source: 'stations', id: choisie.properties.station_id }, { choisie: true });
-      map.flyTo({ center: choisie.geometry.coordinates as [number, number], zoom: 14.2, offset: [140, 60], duration: 1600, essential: true });
-    }
-    precedente.current = choisie?.properties.station_id ?? null;
+    if (map && pret.current) appliquerChoix(map, choisie);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [choisie]);
 
   return <div ref={conteneur} className="absolute inset-0" />;

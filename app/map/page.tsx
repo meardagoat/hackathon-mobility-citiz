@@ -10,13 +10,14 @@ import { Erreur } from '@/components/page/PageHeader';
 
 const OffreMap = dynamic(() => import('@/components/offre/OffreMap'), { ssr: false });
 
-const ORDRE: StationType[] = ['citiz', 'tram', 'bike', 'bus', 'ferry'];
+// Tous les types que l'API peut renvoyer : seuls ceux présents dans les données s'affichent en filtre
+const ORDRE: StationType[] = ['citiz', 'tram', 'metro', 'train', 'bike', 'bus', 'ferry', 'carsharing', 'scooter', 'other'];
 
 export default function OffrePage() {
   const [stations, setStations] = useState<StationsResponse | null>(null);
   const [carreaux, setCarreaux] = useState<CarreauxGeoJSON | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [types, setTypes] = useState<StationType[]>(['citiz', 'tram', 'bike', 'bus', 'ferry']);
+  const [types, setTypes] = useState<StationType[]>(ORDRE);
   const [choisie, setChoisie] = useState<StationFeature | null>(null);
 
   useEffect(() => {
@@ -65,12 +66,12 @@ export default function OffrePage() {
               <button
                 key={t}
                 onClick={() => basculer(t)}
-                className={cn('flex items-center gap-2 rounded-full border py-1.5 pl-2.5 pr-3.5 text-sm font-semibold transition', actif ? 'border-transparent text-white shadow-soft' : 'border-ink/10 bg-paper text-ink-soft hover:text-ink')}
-                style={actif ? { background: couleur } : undefined}
+                className={cn('flex items-center gap-2 rounded-full border py-1.5 pl-2.5 pr-3.5 text-sm font-semibold transition', actif ? 'text-ink shadow-soft' : 'border-ink/10 bg-paper text-ink-soft hover:text-ink')}
+                style={actif ? { background: `${couleur}24`, borderColor: couleur } : undefined}
               >
-                <span className={cn('h-2 w-2 rounded-full', actif ? 'bg-white' : '')} style={!actif ? { background: couleur } : undefined} />
+                <span className="h-2 w-2 rounded-full" style={actif ? { background: couleur } : { border: `1.5px solid ${couleur}` }} />
                 {STATION_LABELS[t]}
-                <span className={cn('tabular-nums', actif ? 'text-white/80' : 'text-ink-soft')}>{formatNumber(comptes[t] ?? 0)}</span>
+                <span className={cn('tabular-nums', actif ? 'text-ink-dim' : 'text-ink-soft')}>{formatNumber(comptes[t] ?? 0)}</span>
               </button>
             );
           })}

@@ -35,7 +35,7 @@ function Trace({ voiture = true }: { voiture?: boolean }) {
 function Ligne({ fait, children }: { fait: boolean; children: React.ReactNode }) {
   return (
     <li className={cn('flex items-center gap-3 text-sm transition-colors', fait ? 'text-ink' : 'text-ink-soft')}>
-      <span className={cn('flex h-5 w-5 items-center justify-center rounded-full border transition-all', fait ? 'border-teal bg-teal text-white' : 'border-ink/15')}>
+      <span className={cn('flex h-5 w-5 items-center justify-center rounded-full border transition-all', fait ? 'border-teal bg-teal text-ink' : 'border-ink/15')}>
         {fait ? <Check size={12} strokeWidth={3} /> : <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal" />}
       </span>
       {children}
@@ -49,7 +49,7 @@ function BoutonPilule({ onClick, children, discret }: { onClick: () => void; chi
       onClick={onClick}
       className={cn(
         'group flex items-center gap-3 rounded-full py-2.5 pl-6 pr-2.5 text-[15px] font-semibold transition-all active:scale-[0.98]',
-        discret ? 'text-ink-dim hover:text-ink' : 'bg-teal text-white shadow-lift hover:bg-teal-deep',
+        discret ? 'text-ink-dim hover:text-ink' : 'bg-teal text-ink shadow-lift hover:bg-teal-deep',
       )}
     >
       {children}
@@ -65,7 +65,8 @@ function BoutonPilule({ onClick, children, discret }: { onClick: () => void; chi
 export function Onboarding({ donnees, onTerminer }: { donnees: Chargement; onTerminer: () => void }) {
   const [etape, setEtape] = useState(0); // 0 : chargement, 1 à 3 : présentation
   const [delaiMini, setDelaiMini] = useState(false);
-  const pret = !!(donnees.resume && donnees.carreaux && donnees.stations && donnees.scenario);
+  // 0 carreau ou 0 station est une réponse valide : seul null veut dire « pas encore chargé »
+  const pret = donnees.resume !== null && donnees.carreaux !== null && donnees.stations !== null && donnees.scenario !== null;
   const etapes = [1, 2, 3];
 
   useEffect(() => {
@@ -84,6 +85,9 @@ export function Onboarding({ donnees, onTerminer }: { donnees: Chargement; onTer
     const touche = (e: KeyboardEvent) => {
       if (e.key === 'Escape') return onTerminer(); // Échap passe l'accueil à tout moment, chargement compris
       if (etape === 0) return;
+      // Entrée et Espace gardent leur effet natif sur un bouton, un lien ou un champ ciblé
+      const cible = e.target instanceof Element ? e.target : null;
+      if ((e.key === 'Enter' || e.key === ' ') && cible?.closest('button, a, input, textarea, select, [role="button"]')) return;
       if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         if (etape < 3) setEtape(etape + 1);
@@ -98,7 +102,7 @@ export function Onboarding({ donnees, onTerminer }: { donnees: Chargement; onTer
   const r = donnees.resume;
   const s = donnees.scenario;
   const partCitiz = r?.citiz.population_within_5min_share ?? null;
-  const progression = [r, donnees.carreaux, donnees.stations, s].filter(Boolean).length / 4;
+  const progression = [r, donnees.carreaux, donnees.stations, s].filter((x) => x !== null).length / 4;
 
   // Écran de chargement
   if (etape === 0) {
@@ -119,10 +123,10 @@ export function Onboarding({ donnees, onTerminer }: { donnees: Chargement; onTer
           </p>
         </div>
         <ul className="rise absolute bottom-8 left-8 hidden space-y-2.5 rounded-3xl bg-paper/80 p-5 backdrop-blur sm:block" style={{ animationDelay: '1.3s' }}>
-          <Ligne fait={!!donnees.carreaux}>Population INSEE · {donnees.carreaux ? `${formatNumber(donnees.carreaux)} carreaux de 200 m` : 'chargement…'}</Ligne>
-          <Ligne fait={!!donnees.stations}>Arrêts et stations · {donnees.stations ? formatNumber(donnees.stations) : 'chargement…'}</Ligne>
-          <Ligne fait={!!r}>Couverture actuelle · {r ? `${formatNumber(r.population_total)} habitants` : 'chargement…'}</Ligne>
-          <Ligne fait={!!s}>Scénarios d’investissement · {s ? 'prêts' : 'chargement…'}</Ligne>
+          <Ligne fait={donnees.carreaux !== null}>Population INSEE · {donnees.carreaux !== null ? `${formatNumber(donnees.carreaux)} carreaux de 200 m` : 'chargement…'}</Ligne>
+          <Ligne fait={donnees.stations !== null}>Arrêts et stations · {donnees.stations !== null ? formatNumber(donnees.stations) : 'chargement…'}</Ligne>
+          <Ligne fait={r !== null}>Couverture actuelle · {r ? `${formatNumber(r.population_total)} habitants` : 'chargement…'}</Ligne>
+          <Ligne fait={s !== null}>Scénarios d’investissement · {s ? 'prêts' : 'chargement…'}</Ligne>
         </ul>
       </div>
     );
