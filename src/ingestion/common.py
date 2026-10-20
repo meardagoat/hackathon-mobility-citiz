@@ -9,6 +9,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import requests
 
@@ -56,10 +57,13 @@ def get_json(url: str, timeout: int = 30):
     return http_get(url, timeout=timeout).json()
 
 
-def download(url: str, dest: Path, force: bool = False) -> Path:
-    """Télécharge un fichier en streaming. Ne retélécharge pas s'il existe déjà."""
+def download(url: str, dest: Path, force: bool = False, version: str | None = None) -> Path:
+    """Télécharge un fichier en streaming. Ne retélécharge pas s'il existe déjà, sauf si
+    `version` (date de mise à jour, empreinte…) diffère de celle du fichier en cache."""
     dest.parent.mkdir(parents=True, exist_ok=True)
-    if dest.exists() and dest.stat().st_size > 0 and not force:
+    fichier_version = dest.with_name(dest.name + ".version")
+    en_cache = fichier_version.read_text() if fichier_version.exists() else None
+    if dest.exists() and dest.stat().st_size > 0 and not force and (version is None or version == en_cache):
         print(f"  déjà présent : {dest.name}")
         return dest
     tmp = dest.with_suffix(dest.suffix + ".part")
@@ -67,6 +71,10 @@ def download(url: str, dest: Path, force: bool = False) -> Path:
         for chunk in r.iter_content(chunk_size=1 << 20):
             f.write(chunk)
     tmp.rename(dest)
+    if version is not None:
+        fichier_version.write_text(version)
+    elif fichier_version.exists():
+        fichier_version.unlink()
     print(f"  téléchargé : {dest.name} ({dest.stat().st_size / 1e6:.1f} Mo)")
     return dest
 
@@ -76,25 +84,51 @@ def save_json(obj, dest: Path) -> None:
     dest.write_text(json.dumps(obj, ensure_ascii=False))
 
 
+def _manquant(v) -> bool:
+    """Valeur manquante (None, NaN, pd.NA), sans échouer sur les listes ou dictionnaires des flux JSON."""
+    return v is None or v is pd.NA or (isinstance(v, float) and v != v)
+
+
 def _types_homogenes(df: pd.DataFrame) -> pd.DataFrame:
     """Les flux open data mélangent parfois nombres et textes dans une même colonne :
-    on convertit ces colonnes en texte pour que Parquet / Delta les acceptent."""
+    on convertit ces colonnes en texte pour que Parquet / Delta les acceptent.
+    Les colonnes booléennes avec des valeurs manquantes restent booléennes (type nullable)."""
     for col in df.columns[df.dtypes == object]:
-        types = {type(v) for v in df[col].dropna()}
-        if len(types) > 1 or types - {str}:
-            df[col] = df[col].map(lambda v: None if v is None or v != v else str(v))
+        valeurs = df[col].dropna()
+        types = {type(v) for v in valeurs}
         if not types:  # colonne entièrement vide : type "null" refusé par Delta, on la type en texte
             df[col] = df[col].astype("string")
+        elif types & {bool, np.bool_} and types <= {bool, np.bool_, str} and valeurs.map(
+                lambda v: str(v).lower() in ("true", "false")).all():
+            # booléens avec des trous (ou déjà écrits en texte "True"/"False" dans l'historique)
+            df[col] = df[col].map(lambda v: None if _manquant(v) else str(v).lower() == "true").astype("boolean")
+        elif all(issubclass(t, (int, float, np.integer, np.floating)) and not issubclass(t, (bool, np.bool_))
+                 for t in types):  # entiers et décimaux mélangés : nombre décimal
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+        elif len(types) > 1 or types - {str}:
+            df[col] = df[col].map(lambda v: None if _manquant(v) else str(v))
     return df
 
 
-def write_table(df: pd.DataFrame, name: str, append: bool = False) -> Path:
-    """Écrit une table Parquet dans <raw>/tables/<name>.parquet (ou ajoute à l'existante)."""
+# Tables écrites pendant l'exécution en cours : le notebook Fabric ne publie que celles-ci.
+TABLES_ECRITES: list[str] = []
+
+
+def write_table(df: pd.DataFrame, name: str, historique: bool = False) -> Path:
+    """Écrit une table Parquet dans <raw>/tables/<name>.parquet.
+
+    historique=True : la table ne contient que la photo de cette exécution ; elle est aussi
+    archivée dans <raw>/historique/<name>/<date_collecte>.parquet, sans relire les photos
+    précédentes (le notebook Fabric l'ajoute à la table Delta au lieu de la réécrire)."""
     path = tables_dir() / f"{name}.parquet"
-    df = _types_homogenes(df)
-    if append and path.exists():
-        df = _types_homogenes(pd.concat([pd.read_parquet(path), df], ignore_index=True))
+    df = _types_homogenes(df.copy())  # ne modifie pas le DataFrame de l'appelant
     df.to_parquet(path, index=False)
+    if historique:
+        archive = raw_dir() / "historique" / name / f"{datetime.now(timezone.utc):%Y%m%dT%H%M%S%fZ}.parquet"
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(archive, index=False)
+    if name not in TABLES_ECRITES:
+        TABLES_ECRITES.append(name)
     print(f"  table {name} : {len(df):,} lignes -> {path}")
     return path
 

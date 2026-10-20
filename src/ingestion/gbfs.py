@@ -11,8 +11,9 @@ Sorties :
   <raw>/tables/gbfs_flux.parquet           (catalogue des flux et statut de collecte)
   <raw>/tables/gbfs_stations.parquet       (stations : position, capacité, opérateur)
   <raw>/tables/gbfs_types_vehicules.parquet
-  <raw>/tables/gbfs_etat_stations.parquet  (historique : véhicules disponibles par station)
-  <raw>/tables/gbfs_vehicules.parquet      (historique : véhicules en free-floating / par station)
+  <raw>/tables/gbfs_etat_stations.parquet  (photo de cette exécution : véhicules disponibles par station)
+  <raw>/tables/gbfs_vehicules.parquet      (photo de cette exécution : véhicules en free-floating / par station)
+  <raw>/historique/gbfs_*/<date>.parquet   (une archive par photo ; historique complet dans les tables Delta)
 """
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -23,6 +24,14 @@ from .common import get_json, now_utc, pan_catalog, raw_dir, save_json, write_ta
 
 FLUX_UTILES = ["system_information", "station_information", "station_status",
                "vehicle_types", "free_bike_status", "vehicle_status"]
+# Types fixés pour les historiques : chaque photo s'ajoute à la table Delta sans conflit de schéma,
+# même quand un flux renvoie des trous, des 0/1 ou des "true"/"false" à la place de booléens.
+TYPES_HISTORIQUES = {
+    "vehicules_disponibles": "float64", "places_disponibles": "float64", "lat": "float64", "lon": "float64",
+    "est_installee": "boolean", "est_en_location": "boolean", "est_reserve": "boolean", "est_indisponible": "boolean",
+}
+BOOLEENS = {True: True, False: False, 1: True, 0: False, "true": True, "false": False, "True": True,
+            "False": False, "1": True, "0": False}
 
 
 def _texte(v):
@@ -30,6 +39,26 @@ def _texte(v):
     if isinstance(v, list):
         return v[0].get("text") if v and isinstance(v[0], dict) else None
     return v
+
+
+def _booleen(v):
+    """True/False, 1/0 (entier ou décimal : une colonne [1, None, 0] devient [1.0, nan, 0.0]),
+    "true"/"false"… ; toute autre valeur (manquante, liste, texte inconnu) devient nulle."""
+    try:
+        return BOOLEENS.get(v)
+    except TypeError:  # liste ou dictionnaire
+        return None
+
+
+def _typer(df: pd.DataFrame) -> pd.DataFrame:
+    """Impose TYPES_HISTORIQUES : utilisé à la collecte et lors de la migration d'un historique Delta."""
+    for col, type_ in TYPES_HISTORIQUES.items():
+        if col in df:
+            if type_ == "boolean":
+                df[col] = df[col].astype(object).map(_booleen).astype("boolean")
+            else:
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype(type_)
+    return df
 
 
 def _flux_disponibles(gbfs: dict) -> dict:
@@ -81,6 +110,7 @@ def lister_flux() -> pd.DataFrame:
                 "producteur": (ds.get("publisher") or {}).get("name"),
                 "sous_types": ",".join(ds.get("sub_types") or []),
                 "est_citiz": "citiz" in ds["title"].lower(),
+                "licence": ds.get("licence"),
                 "ressource_id": r.get("id"),
                 "ressource_titre": r.get("title"),
                 "url": r.get("url"),
@@ -227,14 +257,14 @@ def collecter(seulement_citiz: bool = False, manifestes: bool = False, workers: 
         "gbfs_types_vehicules": pd.DataFrame([x for r in resultats for x in r["types"]]),
     }
     historiques = {
-        "gbfs_etat_stations": pd.DataFrame([x for r in resultats for x in r["etats"]]),
-        "gbfs_vehicules": pd.DataFrame([x for r in resultats for x in r["vehicules"]]),
+        "gbfs_etat_stations": _typer(pd.DataFrame([x for r in resultats for x in r["etats"]])),
+        "gbfs_vehicules": _typer(pd.DataFrame([x for r in resultats for x in r["vehicules"]])),
     }
     for nom, df in tables.items():
         write_table(df, nom)
     for nom, df in historiques.items():
         if len(df):
-            write_table(df, nom, append=True)
+            write_table(df, nom, historique=True)
     ok = (flux["statut"] == "ok").sum()
     print(f"  flux collectés : {ok}/{len(flux)}")
     return {**tables, **historiques}

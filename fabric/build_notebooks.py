@@ -51,18 +51,25 @@ NOTEBOOKS = [
                        "AVEC_STOP_TIMES = True  # horaires détaillés (volumineux)\n"
                        "FORCE = False"),
         "appel": "collecter(zone=ZONE, avec_stop_times=AVEC_STOP_TIMES, force=FORCE, exclure_agregats=EXCLURE_AGREGATS)",
-        "tables": ["gtfs_catalogue", "gtfs_arrets_france", "gtfs_agency", "gtfs_routes", "gtfs_stops",
+        "tables": ["gtfs_catalogue", "gtfs_arrets_france", "gtfs_ressources", "gtfs_agency", "gtfs_routes", "gtfs_stops",
                    "gtfs_trips", "gtfs_calendar", "gtfs_calendar_dates", "gtfs_stop_times"],
         "historiques": [],
     },
 ]
 
-CHARGEMENT_DELTA = '''# Chargement des fichiers Parquet (Files/raw/tables) en tables Delta du Lakehouse par défaut.
+CHARGEMENT_DELTA = '''# Chargement en tables Delta du Lakehouse par défaut, à partir des Parquet écrits par CETTE exécution :
+# - table produite : remplacée ; pour un historique, la photo est ajoutée à la suite (sans relire l'existant) ;
+# - table non produite (ex. ZONE modifiée, AVEC_STOP_TIMES=False) : supprimée, pour ne jamais publier
+#   d'anciennes données ; un historique sans nouvelle photo reste inchangé.
 # L'écriture passe par l'adresse OneLake (abfss) : le dossier monté /lakehouse/default/Tables
 # interrompt les envois de gros fichiers.
+import shutil
 from pathlib import Path
 import pyarrow.parquet as pq
-from deltalake import write_deltalake
+from deltalake import DeltaTable, Schema, write_deltalake
+
+if not TABLES_ECRITES:
+    raise RuntimeError("Aucune table produite dans cette session : exécuter d'abord la cellule de collecte.")
 
 try:
     import notebookutils
@@ -70,17 +77,57 @@ try:
     TABLES_DELTA = (f"abfss://{ctx['defaultLakehouseWorkspaceId']}@onelake.dfs.fabric.microsoft.com/"
                     f"{ctx['defaultLakehouseId']}/Tables" + ("/dbo" if Path("/lakehouse/default/Tables/dbo").exists() else ""))
     OPTIONS = {"bearer_token": notebookutils.credentials.getToken("storage"), "use_fabric_endpoint": "true"}
+
+    def supprimer(chemin):
+        if notebookutils.fs.exists(chemin):
+            notebookutils.fs.rm(chemin, True)
 except ImportError:  # hors Fabric : tables Delta locales, pour tester
     TABLES_DELTA, OPTIONS = str(raw_dir() / "delta"), None
 
-for nom in TABLES:
-    source = raw_dir() / "tables" / f"{nom}.parquet"
-    if not source.exists():
-        print(f"{nom} : absent, ignoré")
+    def supprimer(chemin):
+        shutil.rmtree(chemin, ignore_errors=True)
+
+for nom in TABLES + HISTORIQUES:
+    cible, source = f"{TABLES_DELTA}/{nom}", raw_dir() / "tables" / f"{nom}.parquet"
+    if nom not in TABLES_ECRITES:
+        if nom in HISTORIQUES:
+            print(f"{nom} : pas de nouvelle photo, historique inchangé")
+        else:
+            supprimer(cible)
+            source.unlink(missing_ok=True)
+            print(f"{nom} : non produite par cette exécution, table supprimée")
         continue
-    write_deltalake(f"{TABLES_DELTA}/{nom}", pq.read_table(source), mode="overwrite",
-                    schema_mode="overwrite", storage_options=OPTIONS)
-    print(f"{nom} : table Delta créée")
+    donnees = pq.read_table(source)
+    if nom not in HISTORIQUES:
+        write_deltalake(cible, donnees, mode="overwrite", schema_mode="overwrite", storage_options=OPTIONS)
+        print(f"{nom} : table Delta remplacée ({donnees.num_rows:,} lignes)")
+        continue
+    # photo déjà publiée (cellule relancée après un échec partiel) : pas de doublon
+    photo = donnees.column("date_collecte")[0].as_py() if "date_collecte" in donnees.column_names and donnees.num_rows else None
+    existe = DeltaTable.is_deltatable(cible, storage_options=OPTIONS)
+    if existe and photo and len(DeltaTable(cible, storage_options=OPTIONS).to_pandas(
+            columns=["date_collecte"], filters=[("date_collecte", "=", photo)])):
+        print(f"{nom} : photo du {photo} déjà présente, rien à ajouter")
+        continue
+    # une colonne dont le type change (ex. booléens écrits en texte par une version précédente)
+    # serait convertie silencieusement : on réécrit alors l'historique une fois, avec les types imposés
+    if existe:
+        existant = {f.name: str(f.type) for f in DeltaTable(cible, storage_options=OPTIONS).schema().fields}
+        nouveau = {f.name: str(f.type) for f in (Schema.from_arrow(donnees.schema) if hasattr(Schema, "from_arrow")
+                                                 else Schema.from_pyarrow(donnees.schema)).fields}
+        conflits = [c for c in nouveau if c in existant and existant[c] != nouveau[c]]
+    else:
+        conflits = []
+    if conflits:
+        print(f"{nom} : types modifiés ({', '.join(conflits)}), réécriture unique de l'historique")
+        ancien = DeltaTable(cible, storage_options=OPTIONS).to_pandas()
+        tout = pd.concat([ancien.astype({c: object for c in conflits}), donnees.to_pandas()], ignore_index=True)
+        if "_typer" in globals():  # types déclarés par le module de collecte (TYPES_HISTORIQUES du GBFS)
+            tout = _typer(tout)
+        write_deltalake(cible, _types_homogenes(tout), mode="overwrite", schema_mode="overwrite", storage_options=OPTIONS)
+    else:
+        write_deltalake(cible, donnees, mode="append", schema_mode="merge", storage_options=OPTIONS)
+    print(f"{nom} : {donnees.num_rows:,} lignes ajoutées à l'historique")
 '''
 
 
@@ -100,7 +147,6 @@ def _code_module(nom: str) -> str:
 
 
 def construire(nb: dict) -> dict:
-    tables = nb["tables"] + nb["historiques"]
     cellules = [
         _cellule("markdown", f"# {nb['titre']}\n\n{nb['description']}\n\n"
                  "**Prérequis** : un Lakehouse attaché comme Lakehouse par défaut du notebook.\n"
@@ -116,9 +162,9 @@ def construire(nb: dict) -> dict:
         _cellule("code", (SRC / "common.py").read_text()),
         _cellule("markdown", "## Collecte"),
         _cellule("code", _code_module(nb["module"])),
-        _cellule("code", nb["appel"] + "\n"),
+        _cellule("code", "TABLES_ECRITES.clear()  # seules les tables de cette collecte seront publiées\n" + nb["appel"] + "\n"),
         _cellule("markdown", "## Chargement en tables Delta"),
-        _cellule("code", f"TABLES = {tables!r}\n\n" + CHARGEMENT_DELTA),
+        _cellule("code", f"TABLES = {nb['tables']!r}\nHISTORIQUES = {nb['historiques']!r}\n\n" + CHARGEMENT_DELTA),
     ]
     return {
         "cells": cellules,
