@@ -138,10 +138,12 @@ def write_table(df: pd.DataFrame, name: str, historique: bool = False) -> Path:
     return path
 
 
-def reprendre_precedent(df: pd.DataFrame, name: str, ids_echec, cle: str = "ressource_id"):
+def reprendre_precedent(df: pd.DataFrame, name: str, ids_echec, cle: str = "ressource_id", cles_ligne=None):
     """Ajoute à df les lignes de la version précédente de la table pour les sources en échec :
     une panne passagère d'un flux ne fait pas disparaître ses dernières données valides.
-    Ces lignes gardent leur date_collecte d'origine. Renvoie (table, identifiants repris)."""
+    Ces lignes gardent leur date_collecte d'origine. cles_ligne : colonnes identifiant une ligne ;
+    si une source en échec a tout de même renvoyé une partie de ses lignes, elles priment sur les
+    anciennes (pas de doublon). Renvoie (table, identifiants des sources reprises)."""
     path = tables_dir() / f"{name}.parquet"
     ids = {str(i) for i in ids_echec}
     if not ids or not path.exists():
@@ -150,6 +152,9 @@ def reprendre_precedent(df: pd.DataFrame, name: str, ids_echec, cle: str = "ress
     if cle not in precedent:
         return df, set()
     precedent = precedent[precedent[cle].astype(str).isin(ids)]
+    if cles_ligne and len(df.columns) and len(precedent):
+        identifiant = lambda t: t[cles_ligne].astype(str).agg("|".join, axis=1)
+        precedent = precedent[~identifiant(precedent).isin(set(identifiant(df)))]
     if precedent.empty:
         return df, set()
     print(f"  {name} : {len(precedent):,} lignes précédentes conservées pour {precedent[cle].nunique()} source(s) en échec")
