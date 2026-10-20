@@ -14,14 +14,20 @@ from app.schemas import (
     PolygonGeometry,
     ValueRange,
 )
-from app.services.selection import build_collection_meta, select_zones, zone_population
+from app.services.selection import (
+    build_collection_meta,
+    masked_count,
+    select_zones,
+    total_population,
+    zone_population,
+)
 
 MAX_COVERAGE_FEATURES = 5000
 
 
 def _options_per_1000(zone: Zone) -> float | None:
     population = zone_population(zone)
-    if zone.options_count is None or population == 0:
+    if zone.options_count is None or not population:
         return None
     return round(1000 * zone.options_count / population, 2)
 
@@ -53,7 +59,7 @@ def get_coverage(
     zones = select_zones(ds, area, bbox)
     if levels:
         zones = [z for z in zones if classify(z.options_count, ds.coverage_thresholds) in levels]
-    zones.sort(key=lambda z: (-zone_population(z), z.zone_id))
+    zones.sort(key=lambda z: (z.is_estimated, -round(z.population) if not z.is_estimated else 0, z.zone_id))
     returned = zones[:limit]
     return CoverageResponse(
         meta=build_collection_meta(ds, area, total=len(zones), returned=len(returned)),
@@ -71,13 +77,15 @@ def metric_available(ds: Dataset, zones: list[Zone], metric: HeatmapMetric) -> b
     return True
 
 
-def _aggregate(zones: list[Zone], metric: HeatmapMetric) -> float:
+def _aggregate(zones: list[Zone], metric: HeatmapMetric) -> float | None:
     if metric is HeatmapMetric.population:
-        return sum(zone_population(z) for z in zones)
+        visible = [z for z in zones if not z.is_estimated]
+        return total_population(visible) if visible else None
     if metric is HeatmapMetric.underserved_population:
-        return sum(zone_population(z) for z in zones if is_underserved(z.options_count))
-    weights = [zone_population(z) for z in zones]
+        visible = [z for z in zones if not z.is_estimated]
+        return total_population(z for z in visible if is_underserved(z.options_count)) if visible else None
     scores = [z.accessibility_score for z in zones]
+    weights = [zone_population(z) or 0 for z in zones]
     if sum(weights) == 0:
         return round(sum(scores) / len(scores), 4)
     return round(sum(w * s for w, s in zip(weights, scores)) / sum(weights), 4)
@@ -105,16 +113,17 @@ def get_heatmap(
     available = metric_available(ds, zones, metric)
     points = []
     if available:
-        points = [
-            (lon, lat, float(_aggregate(group, metric)))
-            for (lon, lat), group in sorted(_groups(zones, resolution).items())
-        ]
+        for (lon, lat), group in sorted(_groups(zones, resolution).items()):
+            value = _aggregate(group, metric)
+            if value is not None:
+                points.append((lon, lat, float(value)))
     values = [p[2] for p in points]
     return HeatmapResponse(
         meta=build_collection_meta(ds, area, total=len(points), returned=len(points)),
         metric=metric,
         resolution=resolution,
         metric_available=available,
+        masked_zones_count=masked_count(zones),
         value_range=ValueRange(min=min(values), max=max(values)) if values else None,
         points=points,
     )

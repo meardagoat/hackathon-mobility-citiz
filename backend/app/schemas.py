@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from app.areas import DEFAULT_AREA, Area
 from app.config import DataMode
 from app.coverage_levels import CoverageLevel
-from app.data.models import EquipmentType
+from app.data.models import EquipmentType, Perimeter
 from app.geo import BBox, Position
 from app.station_types import StationSource, StationType
 
@@ -98,7 +98,7 @@ class FeatureCollection(BaseModel, Generic[G, P]):
 
 class CoverageProperties(BaseModel):
     zone_id: str
-    population: int = Field(ge=0)
+    population: int | None = Field(ge=0)
     is_estimated: bool
     commune_codes: list[str]
     options_count: int | None = Field(ge=0)
@@ -135,6 +135,7 @@ class HeatmapResponse(BaseModel):
     metric: HeatmapMetric
     resolution: HeatmapResolution
     metric_available: bool
+    masked_zones_count: int = Field(ge=0)
     value_range: ValueRange | None
     points: list[tuple[float, float, float]]
 
@@ -150,6 +151,7 @@ class SummaryResponse(BaseModel):
     meta: SummaryMeta
     population_total: int = Field(ge=0)
     zones_count: int = Field(ge=0)
+    masked_zones_count: int = Field(ge=0)
     stations_count: int = Field(ge=0)
     stations_by_type: dict[StationType, int]
     citiz: CitizSummary
@@ -163,6 +165,7 @@ class PopulationGroup(BaseModel):
     population: int = Field(ge=0)
     share: float | None = Field(ge=0, le=1)
     zones_count: int = Field(ge=0)
+    masked_zones_count: int = Field(ge=0)
 
 
 class PopulationStatsResponse(BaseModel):
@@ -171,6 +174,7 @@ class PopulationStatsResponse(BaseModel):
     available: bool
     additive: bool
     population_total: int = Field(ge=0)
+    masked_zones_count: int = Field(ge=0)
     groups: list[PopulationGroup]
 
 
@@ -189,15 +193,22 @@ class Recommendation(BaseModel):
     equipment_type: EquipmentType
     lat: float
     lon: float
+    commune_code: str
     cost: float = Field(ge=0, description="EUR")
+    cumulative_cost: float = Field(ge=0, description="EUR")
     population_gained: int = Field(ge=0)
-    estimated_value: float = Field(ge=0)
+    estimated_value: float | None = Field(ge=0)
+    score: float | None = Field(ge=0)
+    adequation: float | None = Field(ge=0, le=1)
+    cars_avoided: int | None = Field(ge=0)
 
 
 class RecommendationResponse(BaseModel):
     meta: Meta
     budget: float
+    perimeter: Perimeter | None
     total_cost: float
     remaining_budget: float
-    total_population_gained: int
+    total_population_gained: int | None = Field(ge=0)
+    population_gained_by_type: dict[EquipmentType, int] | None
     recommendations: list[Recommendation]

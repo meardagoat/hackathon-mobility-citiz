@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -5,7 +7,7 @@ from app.config import DataMode
 from app.coverage_levels import CoverageThresholds
 from app.data import get_dataset
 from app.data.mock import mock_dataset
-from app.data.models import Candidate, Dataset, EquipmentType, Station, Zone
+from app.data.models import Candidate, Dataset, EquipmentType, Perimeter, PrecomputedRecommendation, Station, Zone
 from app.main import app
 from app.station_types import StationSource, StationType
 
@@ -37,20 +39,25 @@ def accessible_dataset(with_candidates: bool = True) -> Dataset:
     )
     stations = (
         Station("gtfs:r1:S1", "Stop 1", (StationType.tram, StationType.bus), StationType.tram, "TBM",
-                StationSource.gtfs, -0.5745, 44.8445),
+                StationSource.gtfs, -0.5745, 44.8445, BORDEAUX),
         Station("gbfs:r2:C1", "Citiz 1", (StationType.citiz,), StationType.citiz, "Citiz",
-                StationSource.gbfs, -0.5720, 44.8452, capacity=2),
+                StationSource.gbfs, -0.5720, 44.8452, BORDEAUX, capacity=2),
     )
     candidates = (
-        Candidate("cand-a", EquipmentType.bus_stop, -0.5745, 44.8445, 100.0, 50, 5.0),
-        Candidate("cand-b", EquipmentType.citiz_station, -0.5720, 44.8452, 300.0, 80, 6.0),
-        Candidate("cand-c", EquipmentType.bike_station, -0.5730, 44.8448, 200.0, 40, 1.0),
+        Candidate("cand-a", EquipmentType.bus_stop, -0.5745, 44.8445, 100.0, 50, 5.0, BORDEAUX),
+        Candidate("cand-b", EquipmentType.citiz_station, -0.5720, 44.8452, 300.0, 80, 6.0, BORDEAUX),
+        Candidate("cand-c", EquipmentType.bike_station, -0.5730, 44.8448, 200.0, 40, 1.0, BORDEAUX),
+    ) if with_candidates else ()
+    recommendations = (
+        PrecomputedRecommendation(Perimeter.citiz, 100_000, 1, "citiz_cell", EquipmentType.citiz_station,
+                                  -0.5720, 44.8452, BORDEAUX, 34_000, 34_000, 120, 100.0, 0.7, 8),
     ) if with_candidates else ()
     return Dataset(
         mode=DataMode.real,
         zones=zones,
         stations=stations,
         candidates=candidates,
+        recommendations=recommendations,
         coverage_thresholds=CoverageThresholds(low_max=2, medium_max=4),
     )
 
@@ -73,3 +80,8 @@ def mock_client(client_for):
 @pytest.fixture
 def real_client(client_for):
     return client_for(accessible_dataset())
+
+
+@pytest.fixture
+def greedy_client(client_for):
+    return client_for(replace(accessible_dataset(), mode=DataMode.mock))

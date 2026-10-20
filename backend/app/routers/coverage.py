@@ -14,13 +14,14 @@ from app.schemas import (
 )
 from app.services import coverage_service
 from app.services.coverage_service import MAX_COVERAGE_FEATURES
+from app.validation import supported_area
 
 router = APIRouter(prefix="/mobility", tags=["coverage"])
 
 
 @router.get("/coverage", response_model=CoverageResponse)
 def get_coverage(
-    area: Area = Query(Area.bordeaux_metropole),
+    area: Area = Depends(supported_area),
     bbox: BBox | None = Depends(parse_bbox),
     limit: int = Query(MAX_COVERAGE_FEATURES, ge=1, le=MAX_COVERAGE_FEATURES),
     coverage_level: list[CoverageLevel] | None = Query(None),
@@ -31,7 +32,7 @@ def get_coverage(
 
 @router.get("/heatmap", response_model=HeatmapResponse)
 def get_heatmap(
-    area: Area = Query(Area.bordeaux_metropole),
+    area: Area = Depends(supported_area),
     bbox: BBox | None = Depends(parse_bbox),
     metric: HeatmapMetric = Query(HeatmapMetric.population),
     resolution: HeatmapResolution = Query(HeatmapResolution.m200),

@@ -52,8 +52,8 @@ def test_recommendations_respect_budget():
     assert [r["rank"] for r in body["recommendations"]] == list(range(1, len(body["recommendations"]) + 1))
 
 
-def test_recommendations_filter_by_equipment_type(real_client):
-    response = real_client.post("/api/v1/recommendations", json={"budget": 1_000_000, "equipment_types": ["bus_stop"]})
+def test_recommendations_filter_by_equipment_type(greedy_client):
+    response = greedy_client.post("/api/v1/recommendations", json={"budget": 1_000_000, "equipment_types": ["bus_stop"]})
     assert {r["equipment_type"] for r in response.json()["recommendations"]} == {"bus_stop"}
 
 

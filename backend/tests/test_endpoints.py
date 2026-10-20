@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from app.config import DataMode
@@ -102,10 +104,11 @@ def test_real_coverage_levels_and_ratios(real_client):
 
 def test_heatmap_population(mock_client):
     coverage = _get(mock_client, COVERAGE, CoverageResponse)["features"]
+    visible = [f["properties"]["population"] for f in coverage if not f["properties"]["is_estimated"]]
     body = _get(mock_client, HEATMAP, HeatmapResponse)
     assert body["metric"] == "population" and body["metric_available"] is True
-    assert len(body["points"]) == len(coverage)
-    assert sum(p[2] for p in body["points"]) == sum(f["properties"]["population"] for f in coverage)
+    assert len(body["points"]) == len(visible) and body["masked_zones_count"] == len(coverage) - len(visible) == 1
+    assert sum(p[2] for p in body["points"]) == sum(visible)
     assert body["value_range"]["min"] <= body["value_range"]["max"]
     assert "features" not in body
 
@@ -171,8 +174,9 @@ def test_real_station_ids_are_namespaced(real_client):
 def test_mock_summary(mock_client):
     coverage = _get(mock_client, COVERAGE, CoverageResponse)["features"]
     body = _get(mock_client, SUMMARY, SummaryResponse)
-    assert body["population_total"] == sum(f["properties"]["population"] for f in coverage)
+    assert body["population_total"] == sum(f["properties"]["population"] or 0 for f in coverage)
     assert body["zones_count"] == len(coverage)
+    assert body["masked_zones_count"] == sum(f["properties"]["is_estimated"] for f in coverage) == 1
     assert len(body["stations_by_type"]) == 10
     assert body["citiz"]["stations_count"] == 1
     assert body["citiz"]["population_within_5min"] is None
@@ -217,8 +221,8 @@ def test_mock_recommendations_are_unavailable(mock_client):
     assert body["meta"]["recommendations_available"] is False
 
 
-def test_recommendations_greedy_within_budget(real_client):
-    body = real_client.post(RECOMMENDATIONS, json={"budget": 350}).json()
+def test_recommendations_greedy_within_budget(greedy_client):
+    body = greedy_client.post(RECOMMENDATIONS, json={"budget": 350}).json()
     assert [r["location_id"] for r in body["recommendations"]] == ["cand-a", "cand-c"]
     assert [r["rank"] for r in body["recommendations"]] == [1, 2]
     assert body["total_cost"] == 300
@@ -226,8 +230,8 @@ def test_recommendations_greedy_within_budget(real_client):
     assert body["total_population_gained"] == 90
 
 
-def test_recommendations_max_results(real_client):
-    body = real_client.post(RECOMMENDATIONS, json={"budget": 10_000, "max_results": 1}).json()
+def test_recommendations_max_results(greedy_client):
+    body = greedy_client.post(RECOMMENDATIONS, json={"budget": 10_000, "max_results": 1}).json()
     assert [r["location_id"] for r in body["recommendations"]] == ["cand-a"]
 
 
@@ -238,7 +242,7 @@ def test_invalid_recommendation_requests(mock_client, payload):
 
 
 def test_dataset_without_candidates(client_for):
-    client = client_for(accessible_dataset(with_candidates=False))
+    client = client_for(replace(accessible_dataset(with_candidates=False), mode=DataMode.mock))
     body = client.post(RECOMMENDATIONS, json={"budget": 1000}).json()
     assert body["recommendations"] == []
     assert body["meta"]["recommendations_available"] is False
@@ -257,7 +261,7 @@ def test_empty_dataset(client_for):
     assert summary["citiz"]["stations_per_100k_inhabitants"] is None
     communes = _get(client, POPULATION, PopulationStatsResponse, group_by="commune")
     assert communes["groups"] == [] and communes["population_total"] == 0
-    assert client.post(RECOMMENDATIONS, json={"budget": 10}).json()["recommendations"] == []
+    assert client.post(RECOMMENDATIONS, json={"budget": 100_000}).json()["recommendations"] == []
 
 
 def test_invalid_bbox_on_every_get_endpoint(mock_client):

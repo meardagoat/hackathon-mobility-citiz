@@ -1,19 +1,22 @@
 from collections.abc import Iterable
-from functools import lru_cache
 
-from app.areas import Area, in_area
+from app.areas import Area, commune_in_area, in_area
 from app.data.models import Candidate, Dataset, Station, Zone
-from app.geo import BBox, square_centre, square_polygon
+from app.geo import BBox, square_centre
 from app.schemas import CollectionMeta, Meta
 from app.station_types import StationType
 
 
-def zone_population(zone: Zone) -> int:
-    return round(zone.population)
+def zone_population(zone: Zone) -> int | None:
+    return None if zone.is_estimated else round(zone.population)
 
 
 def total_population(zones: Iterable[Zone]) -> int:
-    return sum(zone_population(z) for z in zones)
+    return sum(round(z.population) for z in zones if not z.is_estimated)
+
+
+def masked_count(zones: Iterable[Zone]) -> int:
+    return sum(1 for z in zones if z.is_estimated)
 
 
 def share(part: int, total: int) -> float | None:
@@ -27,40 +30,20 @@ def select_zones(ds: Dataset, area: Area, bbox: BBox | None = None) -> list[Zone
     return zones
 
 
-@lru_cache(maxsize=32)
-def area_extent(ds: Dataset, area: Area) -> BBox | None:
-    corners = [p for z in select_zones(ds, area) for p in square_polygon(z.zone_id)]
-    if not corners:
-        return None
-    lons, lats = zip(*corners)
-    return BBox(min(lons), min(lats), max(lons), max(lats))
-
-
-def _extent(ds: Dataset, area: Area, bbox: BBox | None) -> BBox | None:
-    extent = area_extent(ds, area)
-    if extent is None or bbox is None:
-        return extent
-    return extent.intersection(bbox)
-
-
 def select_stations(
     ds: Dataset, area: Area, bbox: BBox | None = None, types: Iterable[StationType] | None = None
 ) -> list[Station]:
-    extent = _extent(ds, area, bbox)
-    if extent is None:
-        return []
     wanted = set(types or ())
     return [
         s for s in ds.stations
-        if extent.contains(s.lon, s.lat) and (not wanted or wanted.intersection(s.modes))
+        if commune_in_area(s.commune_code, area)
+        and (bbox is None or bbox.contains(s.lon, s.lat))
+        and (not wanted or wanted.intersection(s.modes))
     ]
 
 
 def select_candidates(ds: Dataset, area: Area) -> list[Candidate]:
-    extent = area_extent(ds, area)
-    if extent is None:
-        return []
-    return [c for c in ds.candidates if extent.contains(c.lon, c.lat)]
+    return [c for c in ds.candidates if commune_in_area(c.commune_code, area)]
 
 
 def build_meta(ds: Dataset, area: Area) -> Meta:
