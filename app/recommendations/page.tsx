@@ -172,7 +172,7 @@ export default function ClassementPage() {
                     </td>
                     <td className="py-2.5 pr-3 text-right tabular-nums">{keuros(r.cost)}</td>
                     <td className="py-2.5 pr-3 text-right tabular-nums text-ink-dim">{keuros(r.cumulative_cost)}</td>
-                    <td className="py-2.5 text-right tabular-nums text-ink-dim">{r.adequation === null ? '—' : `${(r.adequation * 100).toFixed(r.adequation < 0.1 ? 1 : 0).replace('.', ',')} %`}</td>
+                    <td className="py-2.5 text-right tabular-nums text-ink-dim">{r.adequation === null ? '—' : r.adequation < 0.0005 ? '< 0,1 %' : `${(r.adequation * 100).toFixed(r.adequation < 0.1 ? 1 : 0).replace('.', ',')} %`}</td>
                   </tr>
                 ))}
               </tbody>
