@@ -4,3 +4,4 @@ export { StationMarkers } from './StationMarkers';
 export { MapControls } from './MapControls';
 export { StationPopup } from './StationPopup';
 export { GeoJSONLayer } from './GeoJSONLayer';
+export { PointMap } from './PointMap';

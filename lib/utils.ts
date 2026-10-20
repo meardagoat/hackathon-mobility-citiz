@@ -1,26 +1,20 @@
-import type { TransportType } from '@/types/api';
-import { TRANSPORT_COLORS, TRANSPORT_LABELS } from './constants';
+export const UNAVAILABLE = 'Non disponible';
 
-export function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return n.toString();
+export function formatNumber(n: number | null | undefined): string {
+  return n === null || n === undefined ? UNAVAILABLE : n.toLocaleString('fr-FR');
 }
 
-export function formatCurrency(n: number): string {
+export function formatCurrency(n: number | null | undefined): string {
+  if (n === null || n === undefined) return UNAVAILABLE;
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 }
 
-export function formatPercent(n: number): string {
-  return `${(n * 100).toFixed(1)}%`;
+export function formatPercent(share: number | null | undefined): string {
+  return share === null || share === undefined ? UNAVAILABLE : `${(share * 100).toFixed(1)} %`;
 }
 
-export function getTransportColor(type: TransportType): string {
-  return TRANSPORT_COLORS[type] ?? '#6b7280';
-}
-
-export function getTransportLabel(type: TransportType): string {
-  return TRANSPORT_LABELS[type] ?? type;
+export function formatDate(iso: string | null | undefined): string {
+  return iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : UNAVAILABLE;
 }
 
 export function cn(...classes: (string | undefined | null | false)[]): string {

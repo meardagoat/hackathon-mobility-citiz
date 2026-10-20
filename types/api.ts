@@ -1,396 +1,201 @@
-// Types et interfaces pour l'API Hackathon Mobilité
+// Types de l'API backend v1.1 (backend/app/schemas.py)
 
-// TYPES DE BASE
+export type Area = 'bordeaux_metropole' | 'gironde';
+export type DataMode = 'mock' | 'real';
 
+export type StationType =
+  | 'bus'
+  | 'tram'
+  | 'metro'
+  | 'train'
+  | 'ferry'
+  | 'bike'
+  | 'scooter'
+  | 'carsharing'
+  | 'citiz'
+  | 'other';
 
-export type TransportType = 'bus' | 'metro' | 'tram' | 'bike' | 'carsharing' | 'scooter';
+export type StationSource = 'gtfs' | 'gbfs' | 'mock';
+export type CoverageLevel = 'none' | 'low' | 'medium' | 'high';
+export type HeatmapMetric = 'population' | 'accessibility_score' | 'underserved_population';
+export type HeatmapResolution = '200m' | '1km';
+export type PopulationGroupBy = 'coverage_level' | 'commune' | 'station_type';
+export type EquipmentType = 'citiz_station' | 'bus_stop' | 'bike_station';
+export type Perimeter = 'tous' | 'citiz';
 
-export type CoverageRange = '0-0.2' | '0.2-0.4' | '0.4-0.6' | '0.6-0.8' | '0.8-1.0';
+export type Position = [number, number];
 
-export type Resolution = '200m' | 'iris' | 'commune';
+export interface Meta {
+  api_version: string;
+  data_mode: DataMode;
+  area: Area;
+  data_collected_at: string | null;
+  accessibility_available: boolean;
+  recommendations_available: boolean;
+}
 
-export type Metric = 'coverage_score' | 'options_per_inhabitant' | 'population';
+export interface CollectionMeta extends Meta {
+  total_features: number;
+  returned_features: number;
+  truncated: boolean;
+}
 
-// ============================================================================
-// GÉOMÉTRIE
+export interface SummaryMeta extends Meta {
+  coverage_thresholds: { low_max: number; medium_max: number } | null;
+}
 
-
-export interface Point {
+export interface PointGeometry {
   type: 'Point';
-  coordinates: [number, number]; // [longitude, latitude]
+  coordinates: Position;
 }
 
-export interface Polygon {
+export interface PolygonGeometry {
   type: 'Polygon';
-  coordinates: [number, number][][];
+  coordinates: Position[][];
 }
 
-export type Geometry = Point | Polygon;
-
-// ============================================================================
-
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-}
-
-export interface ApiError {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, any>;
-  };
-}
-
-// ============================================================================
-// MOBILITÉ & COUVERTURE
-
-export interface Zone {
-  id: string;
-  type: string;
-  geometry: Polygon;
-  properties: {
-    population: number;
-    coverage_score: number;
-    transport_options: number;
-    options_per_inhabitant: number;
-    transport_types: Record<TransportType, number>;
-    walking_time_avg: number;
-  };
-}
-
-export interface CoverageResponse {
-  zones: Zone[];
-  metadata: {
-    total_zones: number;
-    region: string;
-    timestamp: string;
-  };
-}
-
-export interface HeatMapFeature {
+export interface Feature<G, P> {
   type: 'Feature';
-  geometry: Point;
-  properties: {
-    intensity: number;
-    population: number;
-    transport_options: number;
-  };
+  geometry: G;
+  properties: P;
 }
 
-export interface HeatMapResponse {
+export interface FeatureCollection<G, P> {
   type: 'FeatureCollection';
-  features: HeatMapFeature[];
-  legend: {
-    min: number;
-    max: number;
-    colors: string[];
-    labels: string[];
-  };
+  meta: CollectionMeta;
+  features: Feature<G, P>[];
 }
 
-export interface MobilityType {
-  id: TransportType;
+export interface CoverageProperties {
+  zone_id: string;
+  population: number | null;
+  is_estimated: boolean;
+  commune_codes: string[];
+  options_count: number | null;
+  options_by_type: Partial<Record<StationType, number>> | null;
+  options_per_1000_inhabitants: number | null;
+  accessibility_score: number | null;
+  coverage_level: CoverageLevel | null;
+}
+
+export type CoverageResponse = FeatureCollection<PolygonGeometry, CoverageProperties>;
+
+export interface StationProperties {
+  station_id: string;
   name: string;
-  icon: string;
-  color: string;
-  total_stations: number;
-}
-
-export interface MobilityTypesResponse {
-  types: MobilityType[];
-}
-
-// ============================================================================
-// STATIONS
-
-
-export interface Station {
-  id: string;
-  name: string;
-  type: TransportType;
+  type: StationType;
+  modes: StationType[];
   operator: string;
-  location: Point;
-  population_served: number;
-  walking_radius_m: number;
-  lines?: string[];
-  status: 'active' | 'inactive' | 'maintenance';
-  capacity?: number;
-  vehicles_available?: number;
+  source: StationSource;
+  capacity: number | null;
+  population_served: number | null;
 }
 
-export interface StationDetail extends Station {
-  address: string;
-  nearby_amenities: {
-    shops: number;
-    offices: number;
-    housing_units: number;
-  };
-  coverage_area: Polygon;
-  accessibility?: {
-    wheelchair: boolean;
-    elevator: boolean;
-    audio_guidance: boolean;
-  };
+export type StationFeature = Feature<PointGeometry, StationProperties>;
+export type StationsResponse = FeatureCollection<PointGeometry, StationProperties>;
+
+export interface HeatmapResponse {
+  meta: CollectionMeta;
+  metric: HeatmapMetric;
+  resolution: HeatmapResolution;
+  metric_available: boolean;
+  masked_zones_count: number;
+  value_range: { min: number; max: number } | null;
+  points: [number, number, number][];
 }
 
-export interface StationsResponse {
-  stations: Station[];
-  pagination: {
-    total: number;
-    limit: number;
-    offset: number;
-    has_more: boolean;
-  };
+export interface CitizSummary {
+  stations_count: number;
+  stations_per_100k_inhabitants: number | null;
+  population_within_5min: number | null;
+  population_within_5min_share: number | null;
 }
 
-// ============================================================================
-// STATISTIQUES
-// ============================================================================
-
-export interface SummaryStatistics {
-  region: string;
-  population: {
-    total: number;
-    covered: number;
-    coverage_rate: number;
-  };
-  stations: {
-    total: number;
-    by_type: Record<TransportType, number>;
-  };
-  accessibility: {
-    well_served: number;
-    moderately_served: number;
-    poorly_served: number;
-  };
-  avg_options_per_inhabitant: number;
-  avg_walking_time_minutes: number;
+export interface SummaryResponse {
+  meta: SummaryMeta;
+  population_total: number;
+  zones_count: number;
+  masked_zones_count: number;
+  stations_count: number;
+  stations_by_type: Record<StationType, number>;
+  citiz: CitizSummary;
+  population_by_coverage_level: Record<CoverageLevel, number> | null;
+  population_with_any_option: number | null;
+  population_with_any_option_share: number | null;
 }
 
-export interface PopulationDistribution {
-  coverage_range: CoverageRange;
-  label: string;
+export interface PopulationGroup {
+  key: string;
   population: number;
-  percentage: number;
-  color: string;
+  share: number | null;
+  zones_count: number;
+  masked_zones_count: number;
 }
 
-export interface RegionStats {
-  region: string;
-  avg_coverage: number;
-  population: number;
+export interface PopulationStatsResponse {
+  meta: Meta;
+  group_by: PopulationGroupBy;
+  available: boolean;
+  additive: boolean;
+  population_total: number;
+  masked_zones_count: number;
+  groups: PopulationGroup[];
 }
-
-export interface PopulationStatistics {
-  distribution: PopulationDistribution[];
-  by_region: RegionStats[];
-}
-
-// ============================================================================
-// RECOMMANDATIONS
-// ============================================================================
 
 export interface RecommendationRequest {
-  region: string;
   budget: number;
-  transport_types: TransportType[];
-  constraints: {
-    min_population?: number;
-    max_distance_existing?: number;
-    prioritize?: 'underserved_areas' | 'high_density' | 'cost_efficiency';
-  };
-  cost_estimates: Partial<Record<TransportType, number>>;
-}
-
-export interface RecommendationImpact {
-  new_population_served: number;
-  coverage_improvement: number;
-  existing_coverage: number;
-  projected_coverage: number;
-  overlap_with_existing?: number;
+  equipment_types?: EquipmentType[];
+  max_results?: number;
+  area?: Area;
 }
 
 export interface Recommendation {
-  id: string;
   rank: number;
-  location: Point;
-  address: string;
-  transport_type: TransportType;
-  estimated_cost: number;
-  impact: RecommendationImpact;
-  justification: string;
-  score: number;
-  nearby_facilities: {
-    metro_stations?: number;
-    bus_stops?: number;
-    offices?: number;
-    residential_density: 'low' | 'medium' | 'high';
-  };
-}
-
-export interface RecommendationSummary {
-  total_recommendations: number;
-  total_cost: number;
-  total_new_population: number;
-  avg_coverage_improvement: number;
-  budget_used: number;
-  budget_remaining: number;
-}
-
-export interface RecommendationsResponse {
-  recommendations: Recommendation[];
-  summary: RecommendationSummary;
-  optimization_method: string;
-  computation_time_ms: number;
-}
-
-export interface SimulationRequest {
-  location: Point;
-  transport_type: TransportType;
-  walking_radius_m: number;
-}
-
-export interface SimulationResponse {
-  location: Point;
-  transport_type: TransportType;
-  impact: RecommendationImpact;
-  coverage_area: Polygon;
-  demographics: {
-    total_population: number;
-    already_served: number;
-    newly_served: number;
-    avg_income: number;
-    car_ownership_rate: number;
-  };
-  score: number;
-  warnings: string[];
-}
-
-export interface RecommendationDetail extends Recommendation {
-  detailed_analysis: {
-    population_breakdown: {
-      '0-18': number;
-      '18-35': number;
-      '35-65': number;
-      '65+': number;
-    };
-    employment: {
-      employed: number;
-      unemployed: number;
-      students: number;
-    };
-    transport_habits: {
-      public_transport: number;
-      car: number;
-      bike: number;
-    };
-  };
-  created_at: string;
-}
-
-// ============================================================================
-// RÉGIONS
-// ============================================================================
-
-export interface Region {
-  id: string;
-  name: string;
-  type: 'region' | 'city' | 'department';
-  population: number;
-  area_km2: number;
-  stations_count: number;
-  coverage_rate: number;
-  parent_region?: string;
-  bounds: {
-    min_lng: number;
-    min_lat: number;
-    max_lng: number;
-    max_lat: number;
-  };
-}
-
-export interface RegionsResponse {
-  regions: Region[];
-}
-
-// ============================================================================
-// MÉTADONNÉES
-// ============================================================================
-
-export interface DataSource {
-  name: string;
-  type: string;
-  url: string;
-  last_sync?: string;
-  year?: number;
-}
-
-export interface MetadataResponse {
-  api_version: string;
-  last_data_update: string;
-  data_sources: DataSource[];
-  coverage: {
-    regions: number;
-    cities: number;
-    stations: number;
-    population_covered: number;
-  };
-  model_info: {
-    version: string;
-    algorithm: string;
-    trained_on: string;
-    accuracy: number;
-  };
-}
-
-// ============================================================================
-// PARAMÈTRES DE REQUÊTE
-// ============================================================================
-
-export interface CoverageParams {
-  region?: string;
-  min_coverage?: number;
-  transport_types?: string;
-  resolution?: Resolution;
-}
-
-export interface HeatMapParams {
-  region?: string;
-  bounds?: string;
-  metric?: Metric;
-}
-
-export interface StationsParams {
-  type?: TransportType;
-  region?: string;
-  bounds?: string;
-  min_population?: number;
-  limit?: number;
-  offset?: number;
-}
-
-export interface SummaryParams {
-  region?: string;
-}
-
-// ============================================================================
-// HELPERS TYPES
-// ============================================================================
-
-export type BoundsString = `${number},${number},${number},${number}`;
-
-export interface LatLngBounds {
-  minLat: number;
-  minLng: number;
-  maxLat: number;
-  maxLng: number;
-}
-
-export interface MapCenter {
+  location_id: string;
+  equipment_type: EquipmentType;
   lat: number;
-  lng: number;
-  zoom: number;
+  lon: number;
+  commune_code: string;
+  cost: number;
+  cumulative_cost: number;
+  population_gained: number;
+  estimated_value: number | null;
+  score: number | null;
+  adequation: number | null;
+  cars_avoided: number | null;
+}
+
+export interface RecommendationResponse {
+  meta: Meta;
+  budget: number;
+  perimeter: Perimeter | null;
+  total_cost: number;
+  remaining_budget: number;
+  total_population_gained: number | null;
+  population_gained_by_type: Partial<Record<EquipmentType, number>> | null;
+  recommendations: Recommendation[];
+}
+
+export interface AreaParams {
+  area?: Area;
+  bbox?: string;
+}
+
+export interface CoverageParams extends AreaParams {
+  limit?: number;
+  coverage_level?: CoverageLevel[];
+}
+
+export interface HeatmapParams extends AreaParams {
+  metric?: HeatmapMetric;
+  resolution?: HeatmapResolution;
+}
+
+export interface StationsParams extends AreaParams {
+  type?: StationType[];
+  limit?: number;
+}
+
+export interface PopulationParams extends AreaParams {
+  group_by?: PopulationGroupBy;
 }

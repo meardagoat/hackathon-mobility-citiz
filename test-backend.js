@@ -3,7 +3,8 @@
  * Usage: node test-backend.js
  */
 
-const API_URL = 'http://localhost:8000/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const ORIGIN = new URL(API_URL).origin;
 
 async function testEndpoint(name, url) {
   try {
@@ -34,12 +35,12 @@ async function main() {
   console.log('=' .repeat(60));
   
   const tests = [
-    ['Health Check', `${API_URL}/health`],
-    ['Couverture (carreaux)', `${API_URL}/mobility/coverage?region=bordeaux`],
-    ['Heat Map', `${API_URL}/mobility/heatmap?region=bordeaux`],
-    ['Stations', `${API_URL}/stations?region=bordeaux&limit=10`],
-    ['Statistiques Summary', `${API_URL}/statistics/summary?region=bordeaux`],
-    ['Statistiques Population', `${API_URL}/statistics/population?region=bordeaux`],
+    ['Health Check', `${ORIGIN}/health`],
+    ['Couverture (carreaux)', `${API_URL}/mobility/coverage?area=bordeaux_metropole&limit=10`],
+    ['Heat Map', `${API_URL}/mobility/heatmap?area=bordeaux_metropole`],
+    ['Stations', `${API_URL}/stations?area=bordeaux_metropole&limit=10`],
+    ['Statistiques Summary', `${API_URL}/statistics/summary?area=bordeaux_metropole`],
+    ['Statistiques Population', `${API_URL}/statistics/population?area=bordeaux_metropole&group_by=coverage_level`],
   ];
   
   let passed = 0;
