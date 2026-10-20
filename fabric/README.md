@@ -28,6 +28,7 @@ Ouvrir chaque notebook, ajuster si besoin la cellule de paramètres, puis **Exé
 - `02_collecte_gbfs` : chaque exécution **ajoute** une photo de l'état des stations et véhicules aux tables `gbfs_etat_stations` et `gbfs_vehicules`, sans relire ni réécrire l'historique. Pour constituer un historique de disponibilité, planifier le notebook : **Exécuter → Planifier**, toutes les 30 minutes.
 
 Règles de chargement (dernière cellule de chaque notebook) :
+- **un échec de collecte ne supprime jamais les dernières données valides** : une source en erreur (flux GBFS, GTFS illisible) garde ses lignes de la collecte précédente (colonne `donnees_precedentes`), une table vide ne remplace pas la précédente, et une erreur bloquante (INSEE ou catalogue indisponible, `ZONE` sans aucun réseau) arrête le notebook avant le chargement ;
 - une table produite par l'exécution **remplace** la table Delta ; une photo GBFS est **ajoutée** à l'historique ;
 - une table du notebook qui n'a pas été produite est **supprimée**, pour ne jamais publier d'anciennes données. Par exemple, changer `ZONE` vers des réseaux sans `calendar.txt` supprime `gtfs_calendar`, et `AVEC_STOP_TIMES = False` supprime `gtfs_stop_times`. Un historique GBFS sans nouvelle photo reste inchangé ;
 - les fichiers téléchargés (agrégat des arrêts, ZIP GTFS) sont réutilisés tant que leur source n'a pas changé : un nouvel export ou un GTFS mis à jour sur le Point d'Accès National est retéléchargé automatiquement (`FORCE = True` force le retéléchargement).

@@ -98,6 +98,9 @@ for nom in TABLES + HISTORIQUES:
             print(f"{nom} : non produite par cette exécution, table supprimée")
         continue
     donnees = pq.read_table(source)
+    if nom not in HISTORIQUES and donnees.num_rows == 0:  # collecte vide : on ne remplace pas des données valides
+        print(f"{nom} : aucune ligne collectée, table précédente conservée")
+        continue
     if nom not in HISTORIQUES:
         write_deltalake(cible, donnees, mode="overwrite", schema_mode="overwrite", storage_options=OPTIONS)
         print(f"{nom} : table Delta remplacée ({donnees.num_rows:,} lignes)")

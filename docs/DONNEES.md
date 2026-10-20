@@ -51,7 +51,7 @@ Les valeurs peuvent être décimales : l'INSEE répartit les ménages pour respe
 ### `gbfs_flux`: catalogue des flux (178 lignes)
 
 Un flux GBFS publié sur le Point d'Accès National, avec son statut de collecte.
-Colonnes : `jeu_titre`, `producteur`, `sous_types` (bicycle, scooter, carsharing, freefloating), `est_citiz`, `licence`, `url`, `page_pan`, `version_gbfs`, `statut` (`ok` ou message d'erreur), `erreurs_partielles`, `nb_stations`, `nb_vehicules`.
+Colonnes : `jeu_titre`, `producteur`, `sous_types` (bicycle, scooter, carsharing, freefloating), `est_citiz`, `licence`, `url`, `page_pan`, `version_gbfs`, `statut` (`ok` ou message d'erreur), `erreurs_partielles`, `nb_stations`, `nb_vehicules`, `donnees_precedentes` (flux en erreur : ses stations et types de véhicules de la collecte précédente sont conservés, avec leur `date_collecte` d'origine).
 
 ### `gbfs_stations`: stations fixes
 
@@ -89,7 +89,7 @@ Cette table ne contient pas le mode de transport : il s'obtient via les GTFS com
 
 ### `gtfs_ressources`: statut de lecture des GTFS de la zone d'étude
 Une ligne par GTFS sélectionné : `ressource_id`, `jeu_titre`, `url`, `licence`, `mise_a_jour`, `statut` (`ok` ou message d'erreur), `fichiers` (fichiers lus), `nb_arrets`.
-Un GTFS dont un fichier est illisible est écarté en entier (statut en erreur) : les tables ci-dessous ne contiennent jamais un réseau partiel, par exemple des arrêts sans courses.
+Un GTFS dont un fichier est illisible n'est pas lu partiellement (statut en erreur) : les tables ci-dessous ne contiennent jamais un réseau partiel, par exemple des arrêts sans courses. Ses données de la collecte précédente sont conservées telles quelles (`donnees_precedentes` = vrai, `date_collecte` d'origine).
 
 ### GTFS complets de la zone d'étude
 Fichiers GTFS standards, concaténés pour tous les réseaux sélectionnés (paramètre `ZONE`, par défaut Bordeaux Métropole + Gironde : TBM, cars régionaux de Gironde, bac, navette aéroport, Sud Gironde ; les agrégats régionaux sont exclus car ils dupliquent ces réseaux). Toutes les colonnes d'origine sont conservées (texte), plus `ressource_id` et `jeu_titre`. Spécification : https://gtfs.org/schedule/reference/
