@@ -107,7 +107,7 @@ uvicorn app.main:app --reload    # données factices, http://localhost:8000
 
 Avec les données réelles : `DATA_MODE=real DATA_DIR=/chemin/vers/gold uvicorn app.main:app --reload`.
 
-Interface de démonstration (`app/`) : à compléter.
+Interface de démonstration : application Next.js à la racine du dépôt, voir la section « Frontend (Next.js) ».
 
 ## Structure
 
