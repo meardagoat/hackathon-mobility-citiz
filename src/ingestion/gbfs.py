@@ -41,11 +41,21 @@ def _texte(v):
     return v
 
 
+def _booleen(v):
+    """True/False, 1/0 (entier ou décimal : une colonne [1, None, 0] devient [1.0, nan, 0.0]),
+    "true"/"false"… ; toute autre valeur (manquante, liste, texte inconnu) devient nulle."""
+    try:
+        return BOOLEENS.get(v)
+    except TypeError:  # liste ou dictionnaire
+        return None
+
+
 def _typer(df: pd.DataFrame) -> pd.DataFrame:
+    """Impose TYPES_HISTORIQUES : utilisé à la collecte et lors de la migration d'un historique Delta."""
     for col, type_ in TYPES_HISTORIQUES.items():
         if col in df:
             if type_ == "boolean":
-                df[col] = df[col].map(lambda v: BOOLEENS.get(v) if isinstance(v, (bool, int, str)) else None).astype("boolean")
+                df[col] = df[col].astype(object).map(_booleen).astype("boolean")
             else:
                 df[col] = pd.to_numeric(df[col], errors="coerce").astype(type_)
     return df
