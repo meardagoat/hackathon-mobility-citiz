@@ -55,7 +55,20 @@ On a **2,5 jours**, et l'essentiel est de **convaincre**. La soutenance comprend
 
 ## 5. Approche technique proposée
 
-**Zone d'étude** : une métropole où Citiz est déjà présent, pour pouvoir apprendre sur ses stations existantes. Proposition : **Strasbourg (Eurométropole)**. C'est le berceau de Citiz, avec un GTFS (CTS) et un GBFS vélo (Vélhop) disponibles. On valide ce choix ensemble au lancement. Si le temps le permet, on montre ensuite que la méthode se généralise à une deuxième ville.
+**Zone d'étude retenue : Bordeaux Métropole et Gironde.** Choix fait à partir des données collectées (stations Citiz GBFS et population INSEE, collecte du 2026-10-19) :
+
+| Département (métropole) | Habitants | Stations Citiz | Stations / 100 000 hab. | Population à 5 min à pied d'une station Citiz |
+|---|---|---|---|---|
+| Bas-Rhin (Strasbourg) | 1,08 M | 205 | 19,0 | 27 % |
+| Rhône (Lyon) | 1,77 M | 208 | 11,7 | 35 % |
+| Haute-Garonne (Toulouse) | 1,34 M | 122 | 9,1 | 19 % |
+| **Gironde (Bordeaux)** | **1,61 M** | **100** | **6,2** | **13 %** |
+| Nord (Lille) | 2,47 M | 71 | 2,9 | 8 % |
+
+- Citiz y est présent (100 stations) : on peut valider le modèle localement, mais la marge de développement est forte, contrairement à Strasbourg ou Lyon, déjà denses.
+- La Gironde fait partie des départements à plus forte croissance démographique : argument pour les besoins futurs.
+- Offre de transport riche (tram, bus et bateaux TBM, cars régionaux, vélos V³) et contraste fort entre centre dense et périurbain : utile pour l'argument d'équité.
+- Le modèle peut apprendre sur les 1 617 stations Citiz de toute la France ; la zone sert à la démonstration et aux recommandations.
 
 **Unité d'analyse** : le **carreau INSEE de 200 m** (population, revenus, ménages).
 
@@ -63,11 +76,13 @@ On a **2,5 jours**, et l'essentiel est de **convaincre**. La soutenance comprend
 
 ```
 GTFS + GBFS + Citiz ─┐
-INSEE carreaux ──────┼─> [Données] ─> [Accessibilité 5 min] ─> [Modèle de valeur] ─> [Optimisation budget] ─> [Carte / démo]
-OSM réseau piéton ───┘                    obj. 1 & 2                         obj. 3
+INSEE carreaux ──────┴─> [Données] ─> [Accessibilité 5 min] ─> [Modèle de valeur] ─> [Optimisation budget] ─> [Carte / démo]
+                       01 à 03 (Fabric)      04 · obj. 1 & 2              05 · obj. 3
 ```
 
-1. **Accessibilité (objectifs 1 et 2)** : « 5 min à pied » ≈ **400 m sur le réseau piéton OSM**. On calcule les isochrones par arrêt ou station, avec un simple rayon de 400 m comme solution de secours. Pour chaque carreau, on compte les options accessibles par type et on calcule le score par habitant. Pour chaque arrêt, la population desservie est la somme des carreaux couverts.
+Ni OpenStreetMap ni les contours IGN (communes, IRIS) ne sont utilisés : la distance à pied est un rayon et la commune vient du code INSEE de chaque carreau (voir ci-dessous).
+
+1. **Accessibilité (objectifs 1 et 2)** : « 5 min à pied » ≈ **400 m à vol d'oiseau** depuis le centre du carreau (notebook `04_accessibilite`). Le calcul d'isochrones sur le réseau piéton OpenStreetMap, envisagé au départ, n'a pas été retenu. La commune d'un carreau est donnée par son code INSEE (`lcog_geo`), sans contours IGN. Pour chaque carreau, on compte les options accessibles par type et on calcule le score par habitant. Pour chaque arrêt, la population desservie est la somme des carreaux couverts.
 2. **Modèle prédictif (objectif 3)** : apprendre ce qui caractérise un bon emplacement à partir des stations Citiz et vélo existantes. Les variables explicatives sont la densité, le revenu, la motorisation des ménages, l'offre de transport proche, les équipements, les emplois et les projections démographiques. On évalue par **validation croisée spatiale** (pas de fuite entre zones voisines) et on compare à une baseline simple.
 3. **Coûts** : des ordres de grandeur **sourcés** par type d'équipement (installation + fonctionnement annuel).
 4. **Optimisation** : choisir les emplacements qui **maximisent la population nouvellement couverte pondérée par l'usage prédit, sous un budget donné**, sans double-compter les habitants déjà desservis. Problème de couverture maximale, résolu par algorithme glouton ou programmation linéaire (PuLP).
@@ -77,8 +92,8 @@ OSM réseau piéton ───┘                    obj. 1 & 2                  
 
 | Rôle | Responsable | Missions | Livre à l'équipe |
 |---|---|---|---|
-| **A. Données & pipeline** | _à attribuer_ | Télécharger et nettoyer GTFS, GBFS (dont Citiz), carreaux INSEE, IRIS IGN, réseau OSM pour la zone choisie. Unifier tous les arrêts et stations dans un même format. Tenir `DATA_SOURCES.md`. Mettre en place Microsoft Fabric (lakehouse) dès que les accès arrivent. | `data/processed/stops.parquet` (id, type, opérateur, géométrie) et `data/processed/carreaux.parquet` (population, revenus, ménages, géométrie) **avant la fin de la matinée du jour 1** |
-| **B. Accessibilité & cartographie (obj. 1-2)** | _à attribuer_ | Calculer les isochrones 5 min à pied, le score d'accessibilité par carreau et la population desservie par arrêt. Produire les cartes des objectifs 1 et 2. Repérer les zones blanches. | `accessibility.parquet` (score par carreau) et `stops_served.parquet` (population par arrêt), plus la carte |
+| **A. Données & pipeline** | _à attribuer_ | Télécharger et nettoyer GTFS, GBFS (dont Citiz) et carreaux INSEE pour la zone choisie. Unifier tous les arrêts et stations dans un même format. Tenir `DATA_SOURCES.md`. Mettre en place Microsoft Fabric (lakehouse) dès que les accès arrivent. | `data/processed/stops.parquet` (id, type, opérateur, géométrie) et `data/processed/carreaux.parquet` (population, revenus, ménages, géométrie) **avant la fin de la matinée du jour 1** |
+| **B. Accessibilité & cartographie (obj. 1-2)** | _à attribuer_ | Calculer l'accessibilité à 5 min à pied (rayon de 400 m), le score d'accessibilité par carreau et la population desservie par arrêt. Produire les cartes des objectifs 1 et 2. Repérer les zones blanches. | `accessibility.parquet` (score par carreau) et `stops_served.parquet` (population par arrêt), plus la carte |
 | **C. Modèle prédictif & optimisation (obj. 3)** | _à attribuer_ | Construire les variables, entraîner et **évaluer** le modèle (validation spatiale, métriques, baseline). Écrire la table de coûts et l'algorithme de sélection sous budget. | Une fonction `recommander(budget, types)` qui renvoie la liste priorisée avec la valeur estimée, le coût et la population gagnée |
 | **D. Produit, démo & soutenance** | _à attribuer_ | Construire l'app de démo (carte et curseur budget). Chiffrer l'impact (habitants gagnés, CO₂ évité). Rédiger la partie éthique. Préparer les slides et le storytelling, coordonner les répétitions. | L'app démo, les slides dans `slides/` et le script de soutenance |
 
@@ -96,7 +111,7 @@ OSM réseau piéton ───┘                    obj. 1 & 2                  
 |---|---|---|
 | **J1 matin** | Lancement : on valide la zone et les formats, on configure le repo et Fabric | Données de base chargées pour la zone (A), squelette de l'app (D) |
 | **J1 après-midi** | Premières versions de bout en bout | Carte d'accessibilité v1 (B), modèle baseline + glouton (C) |
-| **J2 matin** | Montée en qualité | Isochrones sur le réseau réel (B), modèle évalué + coûts sourcés (C) |
+| **J2 matin** | Montée en qualité | Accessibilité consolidée (B), modèle évalué + coûts sourcés (C) |
 | **J2 après-midi** | Intégration | **Démo complète de bout en bout** branchée sur les vraies données |
 | **J2 soir** | Gel des fonctionnalités | Plus de nouvelle fonctionnalité, uniquement des corrections |
 | **J3 matin** | Soutenance | Slides finales, 2 répétitions chronométrées, plan B si la démo plante (captures et vidéo) |
@@ -106,6 +121,6 @@ OSM réseau piéton ───┘                    obj. 1 & 2                  
 ## 8. Fonctionnement de l'équipe
 
 - Point de synchro de 10 min **matin, midi et soir** sur Teams.
-- Une branche par tâche et des pull requests vers `main`. On ne commit jamais de données, seulement les scripts qui les téléchargent.
+- Une branche par tâche et des pull requests vers `dev` (branche d'intégration), puis `dev` vers `main`. On ne commit jamais de données, seulement les scripts qui les téléchargent.
 - Toute nouvelle source va **immédiatement** dans `DATA_SOURCES.md`.
 - Chaque responsable écrit 3-4 lignes dans ce document pour expliquer ses choix : ça servira pour les questions du jury.

@@ -12,7 +12,7 @@ osmnx
 networkx
 
 # Modèle & optimisation
-scikit-learn
+scikit-learn==1.5.2  # même version que le runtime Python de Fabric : chiffres identiques
 lightgbm
 pulp
 
@@ -20,3 +20,6 @@ pulp
 folium
 streamlit
 streamlit-folium
+
+# Tests
+pytest
