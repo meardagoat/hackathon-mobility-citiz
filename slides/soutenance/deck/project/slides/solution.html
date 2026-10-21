@@ -1,0 +1,58 @@
+<section id="solution" data-transition="fade" style="background:#f5f8f8;color:#202020;font-family:'Fira Sans', Arial, sans-serif;padding:96px 128px 140px;display:flex;flex-direction:column;gap:64px">
+<h2 style="font-family:'Fira Sans Condensed', 'Fira Sans', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.02;letter-spacing:-1px;color:#202020;width:1300px">Une seule chaîne, des données ouvertes jusqu’à la décision</h2>
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;flex-direction:row;gap:24px">
+<div style="flex:5;border-top:4px solid #32b4b5;padding:10px 0 0"><p style="font-size:24px;font-weight:700;color:#11686c">Microsoft Fabric · notebooks 01 à 05 et Lakehouse</p></div>
+<div style="flex:2;border-top:4px solid #202020;padding:10px 0 0"><p style="font-size:24px;font-weight:700;color:#202020">Hors Fabric</p></div>
+</div>
+<div style="display:flex;flex-direction:row;gap:24px">
+<div style="flex:1;display:flex;flex-direction:column;gap:10px">
+<div style="width:60px;height:60px;border-radius:50%;background:#11686c;display:flex;align-items:center;justify-content:center"><p style="font-size:24px;font-weight:700;color:#ffffff">1</p></div>
+<p style="font-size:28px;font-weight:700;line-height:1.15">Collecte</p>
+<p style="font-size:24px;line-height:1.35;color:#4d5858">INSEE, GBFS, GTFS</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px">
+<div style="width:60px;height:60px;border-radius:50%;background:#11686c;display:flex;align-items:center;justify-content:center"><p style="font-size:24px;font-weight:700;color:#ffffff">2</p></div>
+<p style="font-size:28px;font-weight:700;line-height:1.15">Lakehouse</p>
+<p style="font-size:24px;line-height:1.35;color:#4d5858">6&#160;644 carreaux, 2&#160;419 arrêts</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px">
+<div style="width:60px;height:60px;border-radius:50%;background:#11686c;display:flex;align-items:center;justify-content:center"><p style="font-size:24px;font-weight:700;color:#ffffff">3</p></div>
+<p style="font-size:28px;font-weight:700;line-height:1.15">Accès à 400&#160;m</p>
+<p style="font-size:24px;line-height:1.35;color:#4d5858">qui a quoi à 5&#160;min</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px">
+<div style="width:60px;height:60px;border-radius:50%;background:#11686c;display:flex;align-items:center;justify-content:center"><p style="font-size:24px;font-weight:700;color:#ffffff">4</p></div>
+<p style="font-size:28px;font-weight:700;line-height:1.15">Prédiction</p>
+<p style="font-size:24px;line-height:1.35;color:#4d5858">gradient boosting, AUC 0,94</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px">
+<div style="width:60px;height:60px;border-radius:50%;background:#11686c;display:flex;align-items:center;justify-content:center"><p style="font-size:24px;font-weight:700;color:#ffffff">5</p></div>
+<p style="font-size:28px;font-weight:700;line-height:1.15">Optimisation</p>
+<p style="font-size:24px;line-height:1.35;color:#4d5858">classement sous budget</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px">
+<div style="width:60px;height:60px;border-radius:50%;background:#202020;display:flex;align-items:center;justify-content:center"><p style="font-size:24px;font-weight:700;color:#ffffff">6</p></div>
+<p style="font-size:28px;font-weight:700;line-height:1.15">API</p>
+<p style="font-size:24px;line-height:1.35;color:#4d5858">FastAPI, lit la couche gold</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px">
+<div style="width:60px;height:60px;border-radius:50%;background:#202020;display:flex;align-items:center;justify-content:center"><p style="font-size:24px;font-weight:700;color:#ffffff">7</p></div>
+<p style="font-size:28px;font-weight:700;line-height:1.15">Application</p>
+<p style="font-size:24px;line-height:1.35;color:#4d5858">carte, budget, classement</p>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;background:#dbf4f4;border-radius:20px;padding:32px 40px">
+<p style="font-family:'Fira Sans Condensed', 'Fira Sans', Arial, sans-serif;font-size:44px;font-weight:700;line-height:1.15;color:#0d4c4f">Valeur d’un lieu = habitants encore sans Citiz à 5&#160;min × adéquation du modèle</p>
+<p style="font-size:24px;line-height:1.4;color:#2d5557">+50&#160;% pour les habitants sans aucun transport · on retient le plus de valeur par euro, sans compter deux fois les mêmes habitants</p>
+</div>
+<p style="position:absolute;left:128px;bottom:48px;width:740px;font-size:24px;color:#5d6767;white-space:nowrap"><span style="color:#11686c;font-weight:700">04 / 12</span>  ·  Proxima · Hackathon Mobilité Citiz × Microsoft × Epitech</p>
+<aside>ABDOUL · 1:00 → 1:40 (40 s)
+Notre outil est une chaîne complète sur Microsoft Fabric.
+Trois notebooks collectent les données ouvertes : population INSEE au carreau de 200 mètres, stations Citiz et vélo, réseau TBM. Tout arrive dans un Lakehouse.
+Le notebook 04 calcule qui a quoi à 400 mètres.
+Le notebook 05 prédit, avec un gradient boosting évalué en validation croisée spatiale, à quoi ressemble un emplacement Citiz : AUC de 0,94. Puis il choisit, sous budget, les lieux qui gagnent le plus d’habitants par euro, sans compter deux fois les mêmes.
+Une API sert le résultat à l’application. Dan va vous la montrer.
+→ Diapo « Démo ». Dan prend le clavier.</aside>
+</section>

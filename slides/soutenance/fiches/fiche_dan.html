@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fiche soutenance · Dan</title>
+<link rel="stylesheet" href="fiche.css">
+</head>
+<body>
+
+<!-- ================= Page 1 : vue d'ensemble ================= -->
+<div class="logos">
+  <img src="logos/citiz.svg" alt="Citiz">
+  <span class="sep"></span>
+  <svg viewBox="0 0 108 23" role="img" aria-label="Microsoft"><rect width="10.5" height="10.5" fill="#F25022"/><rect x="11.5" width="10.5" height="10.5" fill="#7FBA00"/><rect y="11.5" width="10.5" height="10.5" fill="#00A4EF"/><rect x="11.5" y="11.5" width="10.5" height="10.5" fill="#FFB900"/><text x="29" y="17" font-family="'Segoe UI', 'Fira Sans', sans-serif" font-size="15.5" font-weight="600" fill="#737373">Microsoft</text></svg>
+  <span class="sep"></span>
+  <img src="logos/epitech.svg" alt="Epitech">
+  <span class="quand">Soutenance · mercredi, 13h30–17h30 · 5 min + questions</span>
+</div>
+
+<div class="titre">
+  <div>
+    <div class="label">Fiche soutenance · équipe Proxima</div>
+    <h1>Dan<span>.</span></h1>
+    <div class="role">Tu prends le clavier : la démo en direct sur les vraies données, puis la recommandation chiffrée.</div>
+  </div>
+  <div class="chrono">
+    <div class="gros">2 min 20</div>
+    <div class="petit">1:40 → 4:00</div>
+  </div>
+</div>
+
+<div class="frise">
+  <div style="--d:30"><i>0:00</i>Contexte · Abdoul</div>
+  <div style="--d:30"><i>0:30</i>Problème · Abdoul</div>
+  <div style="--d:40"><i>1:00</i>Solution · Abdoul</div>
+  <div class="moi" style="--d:90"><i>1:40</i>Démo</div>
+  <div class="moi" style="--d:50"><i>3:10</i>Recommandation</div>
+  <div style="--d:60"><i>4:00</i>Limites · Abdoul</div>
+</div>
+<div class="frise-legende"><span class="moi">Toi</span><span>Abdoul</span></div>
+
+<div class="message">
+  <div class="label">Ton message en une phrase</div>
+  <p>« L'outil marche sur les vraies données : on choisit un budget, il répond par une liste d'emplacements, avec le nombre d'habitants gagnés et ce que ça coûte. »</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="v">29</div><div class="t">stations Citiz pour 1 M€ sur 3 ans (986 k€ dépensés)</div></div>
+  <div class="kpi"><div class="v leaf">+106 860</div><div class="t">habitants à 5 min d'une voiture partagée · 27,3 % → 41,5 %</div></div>
+  <div class="kpi"><div class="v">232</div><div class="t">voitures particulières en moins (8 par voiture Citiz)</div></div>
+</div>
+
+<div class="reflexes">
+  <div class="reflexe"><b>Ton signal d'entrée</b>Abdoul dit « Dan va vous la montrer. » : Cmd+Tab vers Chrome, puis un clic sur une zone vide de la carte.</div>
+  <div class="reflexe"><b>Laisse respirer la touche 4</b>Les balises s'allument une à une pendant 3 s : c'est le moment fort, tais-toi.</div>
+  <div class="reflexe"><b>Ça plante ?</b>Pas de débogage devant le jury : « Réessayer » une fois, puis les captures du plan B.</div>
+</div>
+
+<!-- ================= Démo ================= -->
+<div class="bloc-section deux" style="margin-top:12px">
+  <div class="liste pieges">
+    <h3>Pièges à éviter</h3>
+    <ul>
+      <li>Dire « IA » : dis « modèle de prédiction » ou « gradient boosting ».</li>
+      <li>Appuyer sur une touche sans avoir cliqué sur la carte avant.</li>
+      <li>Montrer un écran que tu n'as pas répété.</li>
+      <li>Répondre hors de ton domaine : « Abdoul, tu veux répondre ? »</li>
+    </ul>
+  </div>
+  <div class="liste check">
+    <h3>Avant de passer (tu as le clavier)</h3>
+    <ul>
+      <li>Backend : <code class="long">cd backend &amp;&amp; DATA_MODE=real DATA_DIR=../data/processed/gold_fabric ../.venv/bin/uvicorn app.main:app --port 8000</code></li>
+      <li><code>curl localhost:8000/health</code> renvoie <code>{"status":"ok"}</code>.</li>
+      <li>Front compilé : <code>npx next start -p 3000</code>, puis <code>localhost:3000</code> dans Chrome.</li>
+      <li>Passer l'accueil, vérifier : 1 M€, Citiz seul, 29 emplacements, +106 860.</li>
+      <li>Ouvrir une fois « Classement » pour charger les scénarios, revenir sur Explorer.</li>
+      <li>Chrome plein écran, zoom 100 %, notifications coupées, veille désactivée.</li>
+      <li>Une répétition chronométrée avec Abdoul (relais à 1:40 et 4:00).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="saut"></div>
+<div class="section"><span class="num">01</span><h2>Ta démo, clic par clic</h2><span class="aide">Les touches ne répondent qu'après un clic sur la carte</span></div>
+
+<table class="demo">
+  <tr><th>Temps</th><th>Action</th><th>À dire</th></tr>
+  <tr><td class="t">1:40</td><td class="a">Chrome sur Explorer (1 M€, Citiz seul). Clic sur une zone vide de la carte.</td><td>« Voici la métropole. Chaque colonne est un carreau de 200 mètres ; sa hauteur, c'est le nombre d'habitants. <span class="cle">En turquoise, une Citiz à 5 minutes. En gris, d'autres transports mais pas de Citiz. En rouge, rien du tout.</span> »</td></tr>
+  <tr><td class="t">1:55</td><td class="a">Touche <kbd>1</kbd></td><td>« Avec 100 000 euros, l'outil ouvre 2 stations : 10 122 habitants gagnés. »</td></tr>
+  <tr><td class="t">2:05</td><td class="a">Touche <kbd>4</kbd>, puis laisser les balises s'allumer (3 s)</td><td>« Avec 1 million : <span class="cle">29 stations, 986 000 euros, 106 860 habitants gagnés.</span> La couverture passe de 27,3 à 41,5 %. Et 232 voitures en moins. »</td></tr>
+  <tr><td class="t">2:30</td><td class="a">Clic sur la ligne <b>01 Lormont</b> dans la liste de droite</td><td>« La première, c'est Lormont : 5 523 habitants gagnés pour 34 000 euros. Les carreaux verts sont ceux qu'elle met à moins de 5 minutes. »</td></tr>
+  <tr><td class="t">2:45</td><td class="a">Clic sur <b>Classement</b> dans le menu</td><td>« Le même résultat en tableau : rang, commune, habitants gagnés, coût, coût cumulé et adéquation du modèle. Le graphique compare les quatre budgets : 10 000, 31 000, 58 000, puis 107 000 habitants gagnés. »</td></tr>
+  <tr><td class="t">3:05</td><td class="a">Défiler jusqu'au tableau, montrer l'adéquation du rang 01</td><td>« Retenez ce <span class="cle">moins de 0,1 %</span> : Abdoul y reviendra. »</td></tr>
+  <tr><td class="t">3:10</td><td class="a">Cmd+Tab vers les diapos, diapo 5</td><td></td></tr>
+</table>
+<p style="font-size:8.5pt;color:var(--dim);margin-bottom:12px">Touche <kbd>R</kbd> : rejoue l'allumage des balises. Ne montre pas « Chiffres », « Offre » ni « Citiz + bus + vélo » pendant le pitch : garde-les pour les questions.</p>
+
+<div class="carte moi">
+  <div class="quand"><div class="diapo">Diapo 5</div><div class="nom">Recomman&shy;dation</div><div class="t">3:10 → 4:00</div></div>
+  <div class="texte">
+    <p>Notre recommandation : <span class="cle">1 million d'euros sur trois ans, 29 stations,</span> 986 000 euros dépensés.</p>
+    <p>Résultat : <span class="cle">106 860 habitants de plus</span> à 5 minutes d'une voiture partagée. La couverture passe de <span class="cle">27,3 à 41,5 %</span>, pour environ 9 euros par habitant.</p>
+    <p>Avec l'hypothèse Citiz de 8 voitures remplacées par voiture partagée : <span class="cle">232 voitures en moins.</span></p>
+    <p>Et pas seulement au centre : Lormont, Le Bouscat et Cenon d'abord, 9 communes en tout. Parmi les ménages nouvellement desservis, 20,5 % sont pauvres, contre 15,1 % en moyenne.</p>
+    <p><b>Abdoul, nos limites.</b></p>
+    <span class="geste">diapo 6 · Abdoul reprend la parole</span>
+  </div>
+</div>
+
+<div class="note" style="margin-top:4px"><b>Si la démo plante</b> (page blanche plus de 5 s, bandeau rouge, carte vide) : clique une fois sur « Réessayer ». Rien en 5 s ? Dis « La démo ne répond pas, je vous montre les captures faites sur les mêmes données. », puis diapos → annexes A1 (Explorer 1 M€), A2 (Lormont), A3 (Classement), même texte, et retour à la diapo 5.</div>
+
+<!-- ================= Chiffres + termes ================= -->
+<div class="saut"></div>
+<div class="section"><span class="num">02</span><h2>Les chiffres à connaître par cœur</h2><span class="aide">Source : API en mode réel, données Fabric</span></div>
+<div class="chiffres">
+  <div class="chiffre"><div class="v">100 k€</div><div class="t">2 stations, 68 k€, +10 122 habitants</div></div>
+  <div class="chiffre"><div class="v">250 k€</div><div class="t">7 stations, 238 k€, +31 275 habitants</div></div>
+  <div class="chiffre"><div class="v">500 k€</div><div class="t">14 stations, 476 k€, +57 606 habitants</div></div>
+  <div class="chiffre large"><div class="v">1 M€ · 29 stations</div><div class="t">986 k€ (reste 14 k€) · <b>+106 860 habitants</b> · 27,3 % → <b>41,5 %</b> · 232 voitures · ≈ 9 € par habitant</div></div>
+  <div class="chiffre"><div class="v">Lormont</div><div class="t">rang 1 : +5 523 habitants pour 34 k€, adéquation &lt; 0,1 %</div></div>
+  <div class="chiffre"><div class="v">19 / 29</div><div class="t">stations avec une adéquation inférieure à 5 %</div></div>
+  <div class="chiffre"><div class="v">28 + 3</div><div class="t">« Citiz + bus + vélo » à 1 M€ : 28 Citiz + 3 arrêts de bus, 997 k€</div></div>
+  <div class="chiffre"><div class="v">0,944</div><div class="t">AUC Citiz (243 positifs) · vélo 0,917 · bus 0,663</div></div>
+  <div class="chiffre"><div class="v">0,939</div><div class="t">AUC de la règle « distance au centre » pour Citiz : le modèle fait à peine mieux</div></div>
+  <div class="chiffre"><div class="v">63 %</div><div class="t">garantie minimale du glouton (1 − 1/e) face à l'optimum</div></div>
+</div>
+
+<div class="bloc-section">
+<div class="section"><span class="num">03</span><h2>Les termes à maîtriser</h2><span class="aide">Ton domaine : modèle, optimisation, API, app</span></div>
+<div class="glossaire">
+  <div class="terme"><b>Gradient boosting</b>Modèle qui empile de petits arbres de décision (HistGradientBoosting de scikit-learn 1.5.2).</div>
+  <div class="terme"><b>Cible du modèle</b>Y a-t-il déjà une station de ce type à moins de 200 m du carreau ?</div>
+  <div class="terme"><b>Validation croisée spatiale</b>5 plis groupés par blocs de 2 km : un carreau n'est jamais testé avec ses voisins dans l'entraînement.</div>
+  <div class="terme"><b>Adéquation</b>Rang de la prédiction du modèle. Elle pondère la valeur de 0,5 à 1 : au pire, elle la divise par deux.</div>
+  <div class="terme"><b>Valeur d'un lieu</b>Habitants pas encore couverts × (0,5 + 0,5 × adéquation), +50 % pour ceux sans aucune option.</div>
+  <div class="terme"><b>Glouton paresseux</b>À chaque étape, le lieu qui ajoute le plus de valeur par euro ; puis on met à jour qui est couvert.</div>
+  <div class="terme"><b>Couverture maximale</b>Problème classique : placer N sites pour couvrir le plus de monde possible.</div>
+  <div class="terme"><b>Sans double compte · gains cumulés*</b>Un habitant déjà couvert ne compte plus · en multi-types, il compte une fois par type.</div>
+  <div class="terme"><b>FastAPI</b><code>/health</code> <code>/api/v1/statistics/summary</code> <code>/coverage</code> <code>/stations</code> <code>POST /recommendations</code></div>
+  <div class="terme"><b>Mode real · Parquet</b>L'API lit les 4 fichiers Parquet du gold Fabric : carreaux, offre existante, recommandations, meta.</div>
+  <div class="terme"><b>Front</b>Next.js + MapLibre (carte vectorielle 3D), charte calée sur Citiz.</div>
+  <div class="terme"><b>5 000 par requête</b>Limite de <code>/coverage</code> : le front charge les 6 644 carreaux en 4 bandes.</div>
+</div>
+</div>
+
+<!-- ================= Questions ================= -->
+<div class="saut"></div>
+<div class="section"><span class="num">04</span><h2>Les questions pour toi</h2><span class="aide">Abdoul prend les données, Fabric, les coûts et l'équité</span></div>
+
+<div class="qr"><div class="n">01</div><div><div class="q">Comment le modèle est-il évalué ?</div><div class="court">Validation croisée spatiale, AUC 0,944 pour Citiz.</div><div class="detail">Gradient boosting sur les 6 644 carreaux habités. Cible : une station du type à moins de 200 m ? 5 plis groupés par blocs de 2 km. AUC : Citiz 0,944, vélo 0,917, bus 0,663.</div></div></div>
+
+<div class="qr"><div class="n">02</div><div><div class="q">Le modèle fait-il mieux qu'une règle simple ?</div><div class="court">À peine pour Citiz, pas du tout pour le bus, et on l'assume.</div><div class="detail">« Distance au centre » donne 0,939 pour Citiz (modèle 0,944) ; « population à 400 m » donne 0,668 pour le bus (modèle 0,663). L'emplacement actuel de Citiz s'explique surtout par la centralité. C'est pour ça que l'adéquation ne fait que pondérer : la population nouvellement couverte reste le critère principal.</div></div></div>
+
+<div class="qr"><div class="n">03</div><div><div class="q">La n°1 a moins de 0,1 % d'adéquation : pourquoi la recommander ?</div><div class="court">L'adéquation peut au plus diviser la valeur par deux.</div><div class="detail">Lormont gagne 5 523 habitants, le plus gros gain : même pénalisée, elle reste devant. Le modèle reconnaît le centre de Bordeaux, alors que les gains sont en périphérie (19 stations sur 29 sous 5 %). D'où l'idée d'une station pilote d'abord.</div></div></div>
+
+<div class="qr"><div class="n">04</div><div><div class="q">Pourquoi un glouton et pas une optimisation exacte ?</div><div class="court">Garantie d'au moins 63 % de l'optimum, et en pratique bien mieux.</div><div class="detail">En « Citiz seul », toutes les stations coûtent pareil : c'est un problème de couverture maximale. Une résolution exacte (PuLP) était prévue, pas faite.</div></div></div>
+
+<div class="qr"><div class="n">05</div><div><div class="q">Comment évitez-vous de compter deux fois les mêmes habitants ?</div><div class="court">Après chaque choix, les carreaux couverts sont marqués.</div><div class="detail">La station suivante ne compte que les habitants encore non couverts : les 106 860 sont des personnes distinctes. Exception signalée par « Gains cumulés* » : le mode multi-types.</div></div></div>
+
+<div class="qr"><div class="n">06</div><div><div class="q">Pourquoi le vélo et le bus ne sont presque jamais choisis ?</div><div class="court">Le vélo coûte trop cher, et le bus est déjà partout.</div><div class="detail">Vélo : 135 k€, 4 fois une Citiz pour un gain comparable. Bus : 15 k€ seulement, mais plus de 96 % des habitants ont déjà un arrêt à 400 m. À 1 M€ en multi-types : 28 Citiz + 3 bus, 997 k€.</div></div></div>
+
+<div class="qr"><div class="n">07</div><div><div class="q">Peut-on mettre un budget libre ?</div><div class="court">Pas encore : 4 budgets × 2 périmètres sont précalculés dans Fabric.</div><div class="detail">Un budget libre demanderait de lancer le classement du 05 à la demande depuis l'API.</div></div></div>
+
+<div class="qr"><div class="n">08</div><div><div class="q">Comment l'app récupère-t-elle les données ?</div><div class="court">Fabric → fichiers gold Parquet → API FastAPI → front Next.js.</div><div class="detail">L'API charge les fichiers au démarrage (mode real) et les sert en JSON. Rien n'est inventé côté front : tous les chiffres viennent de l'API.</div></div></div>
+
+<div class="qr"><div class="n">09</div><div><div class="q">Pourquoi une carte 3D ? C'est du gadget ?</div><div class="court">La hauteur montre où vivent les gens, la couleur s'ils sont desservis.</div><div class="detail">On voit d'un coup d'œil les zones denses non couvertes : c'est exactement là que l'outil place les stations.</div></div></div>
+
+</body>
+</html>

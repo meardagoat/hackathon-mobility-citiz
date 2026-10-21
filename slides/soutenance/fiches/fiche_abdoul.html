@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fiche soutenance · Abdoul</title>
+<link rel="stylesheet" href="fiche.css">
+</head>
+<body>
+
+<!-- ================= Page 1 : vue d'ensemble ================= -->
+<div class="logos">
+  <img src="logos/citiz.svg" alt="Citiz">
+  <span class="sep"></span>
+  <svg viewBox="0 0 108 23" role="img" aria-label="Microsoft"><rect width="10.5" height="10.5" fill="#F25022"/><rect x="11.5" width="10.5" height="10.5" fill="#7FBA00"/><rect y="11.5" width="10.5" height="10.5" fill="#00A4EF"/><rect x="11.5" y="11.5" width="10.5" height="10.5" fill="#FFB900"/><text x="29" y="17" font-family="'Segoe UI', 'Fira Sans', sans-serif" font-size="15.5" font-weight="600" fill="#737373">Microsoft</text></svg>
+  <span class="sep"></span>
+  <img src="logos/epitech.svg" alt="Epitech">
+  <span class="quand">Soutenance · mercredi, 13h30–17h30 · 5 min + questions</span>
+</div>
+
+<div class="titre">
+  <div>
+    <div class="label">Fiche soutenance · équipe Proxima</div>
+    <h1>Abdoul<span>.</span></h1>
+    <div class="role">Tu ouvres et tu fermes : le contexte, le problème, la chaîne Fabric, puis les limites et la conclusion.</div>
+  </div>
+  <div class="chrono">
+    <div class="gros">2 min 40</div>
+    <div class="petit">0:00 → 1:40 · 4:00 → 5:00</div>
+  </div>
+</div>
+
+<div class="frise">
+  <div class="moi" style="--d:30"><i>0:00</i>Contexte</div>
+  <div class="moi" style="--d:30"><i>0:30</i>Problème</div>
+  <div class="moi" style="--d:40"><i>1:00</i>Solution</div>
+  <div style="--d:90"><i>1:40</i>Démo · Dan</div>
+  <div style="--d:50"><i>3:10</i>Reco · Dan</div>
+  <div class="moi" style="--d:60"><i>4:00</i>Limites + fin</div>
+</div>
+<div class="frise-legende"><span class="moi">Toi</span><span>Dan</span></div>
+
+<div class="message">
+  <div class="label">Ton message en une phrase</div>
+  <p>« Citiz veut savoir où ouvrir ses prochaines stations. On a construit sur Microsoft Fabric une chaîne qui part des données ouvertes et transforme un budget en une liste d'emplacements chiffrés. »</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="v coral">72,7 %</div><div class="t">des habitants de la métropole n'ont aucune Citiz à 5 min à pied</div></div>
+  <div class="kpi"><div class="v">1 M€ → 29</div><div class="t">stations Citiz recommandées, 986 k€ sur 3 ans</div></div>
+  <div class="kpi"><div class="v leaf">+106 860</div><div class="t">habitants desservis : la couverture passe de 27,3 % à 41,5 %</div></div>
+</div>
+
+<div class="reflexes">
+  <div class="reflexe"><b>Parle au jury, pas à l'écran</b>Retiens les passages surlignés : le reste vient tout seul.</div>
+  <div class="reflexe"><b>Passe la main nettement</b>« Dan va vous la montrer. » à 1:40, puis tu reprends à 4:00.</div>
+  <div class="reflexe"><b>Tu ne sais pas ?</b>« On ne l'a pas mesuré ; voilà comment on le ferait. » Jamais d'invention.</div>
+</div>
+
+<!-- ================= Script ================= -->
+<div class="bloc-section deux" style="margin-top:12px">
+  <div class="liste pieges">
+    <h3>Pièges à éviter</h3>
+    <ul>
+      <li>Dire « IA » : dis « modèle de prédiction » ou « gradient boosting ».</li>
+      <li>« On couvre 41,5 % » sans préciser « à 5 min à pied, à vol d'oiseau ».</li>
+      <li>Lire tes notes : regarde le jury.</li>
+      <li>Répondre hors de ton domaine : « Dan, tu veux répondre ? »</li>
+    </ul>
+  </div>
+  <div class="liste check">
+    <h3>Avant de passer</h3>
+    <ul>
+      <li>Diapos en mode présentation, diapo 1, fenêtre à part.</li>
+      <li>Deck exporté en PDF, sur le bureau et sur clé USB.</li>
+      <li>Captures du plan B prêtes, annexes A1 à A3 repérées.</li>
+      <li>Une répétition chronométrée avec Dan (relais à 1:40 et 4:00).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="saut"></div>
+<div class="section"><span class="num">01</span><h2>Ton script, mot à mot</h2><span class="aide">≈ 140 mots/min · surligné = à retenir</span></div>
+
+<div class="carte moi">
+  <div class="quand"><div class="diapo">Diapo 1</div><div class="nom">Contexte</div><div class="t">0:00 → 0:30</div></div>
+  <div class="texte">
+    <p>Bonjour, je suis Abdoul, de l'équipe Proxima, avec Dan, Komlan, Catrielle et Mariane.</p>
+    <p>Citiz veut s'implanter dans de nouvelles villes. Sa question : <span class="cle">avec un budget donné, où ouvrir les prochaines stations ?</span></p>
+    <p>On y a répondu sur un terrain réel, Bordeaux Métropole : <span class="cle">28 communes, 752 544 habitants, 94 stations Citiz.</span></p>
+    <span class="geste">diapo suivante</span>
+  </div>
+</div>
+
+<div class="carte moi">
+  <div class="quand"><div class="diapo">Diapo 2</div><div class="nom">Problème</div><div class="t">0:30 → 1:00</div></div>
+  <div class="texte">
+    <p>Le constat : <span class="cle">72,7 % des habitants n'ont aucune Citiz à moins de 5 minutes à pied.</span></p>
+    <p>Pourtant, 98 % ont déjà un bus, un tram ou un vélo à 5 minutes. <span class="cle">Ce qui manque, c'est la voiture partagée.</span></p>
+    <p>Et une station coûte 34 000 euros sur trois ans : il faut savoir où chaque euro touche le plus d'habitants.</p>
+    <span class="geste">diapo suivante</span>
+  </div>
+</div>
+
+<div class="carte moi">
+  <div class="quand"><div class="diapo">Diapo 3</div><div class="nom">Solution</div><div class="t">1:00 → 1:40</div></div>
+  <div class="texte">
+    <p>Notre outil est une <span class="cle">chaîne complète sur Microsoft Fabric.</span></p>
+    <p>Trois notebooks collectent les données ouvertes : population INSEE au carreau de 200 mètres, stations Citiz et vélo, réseau TBM. Tout arrive dans un Lakehouse.</p>
+    <p>Le notebook 04 calcule qui a quoi à 400 mètres.</p>
+    <p>Le notebook 05 <span class="cle">prédit</span>, avec un gradient boosting évalué en validation croisée spatiale, à quoi ressemble un emplacement Citiz : AUC de 0,94. Puis il <span class="cle">choisit, sous budget,</span> les lieux qui gagnent le plus d'habitants par euro, sans compter deux fois les mêmes.</p>
+    <p>Une API sert le résultat à l'application. <b>Dan va vous la montrer.</b></p>
+    <span class="geste">diapo « Démo » · Dan prend le clavier</span>
+  </div>
+</div>
+
+<div class="relais"><b>1:40 → 4:00 · Dan</b> fait la démo puis la recommandation. Reste à côté de lui et regarde l'écran avec le jury. Il finit par <b>« Abdoul, nos limites. »</b></div>
+
+<div class="carte moi">
+  <div class="quand"><div class="diapo">Diapo 6</div><div class="nom">Limites et suite</div><div class="t">4:00 → 5:00</div></div>
+  <div class="texte">
+    <p>Six limites, assumées.</p>
+    <p><b>Un</b> : 1 983 carreaux sont masqués par le secret statistique. Leur population n'est jamais affichée ni comptée.</p>
+    <p><b>Deux</b> : le modèle bus est faible, AUC 0,66 : il y a des arrêts presque partout.</p>
+    <p><b>Trois</b> : le vélo n'est jamais retenu : 135 000 euros sur trois ans, quatre fois une Citiz.</p>
+    <p><b>Quatre</b> : 5 minutes, c'est un rayon de 400 mètres à vol d'oiseau. On surestime donc la couverture.</p>
+    <p><b>Cinq</b> : les coûts sont sourcés, mais le prix du véhicule reste à confirmer avec Citiz.</p>
+    <p><b>Six</b> : la n°1, Lormont, a moins de 0,1 % d'adéquation. Elle ne ressemble pas aux stations actuelles, toutes au centre. <span class="cle">Le modèle apprend où Citiz est, pas où il réussira.</span> C'est pourquoi la population pèse plus que le modèle, et pourquoi on propose d'y ouvrir d'abord une station pilote.</p>
+    <p>La suite : de vrais trajets à pied, des coûts validés avec Citiz, et une deuxième ville. <span class="cle">Merci, place à vos questions.</span></p>
+    <div class="note"><b>En retard à 4:00 ?</b> Dis seulement les limites 2, 3 et 6, puis « La suite… Merci ».</div>
+  </div>
+</div>
+
+<!-- ================= Chiffres + termes ================= -->
+<div class="bloc-section"></div>
+<div class="section"><span class="num">02</span><h2>Les chiffres à connaître par cœur</h2><span class="aide">Source : API en mode réel, données Fabric</span></div>
+<div class="chiffres">
+  <div class="chiffre"><div class="v">752 544</div><div class="t">habitants comptés, carreaux masqués exclus · 28 communes</div></div>
+  <div class="chiffre"><div class="v">94</div><div class="t">stations Citiz aujourd'hui dans la métropole</div></div>
+  <div class="chiffre"><div class="v">27,3 %</div><div class="t">ont une Citiz à 5 min (205 771 habitants) → 72,7 % n'en ont pas</div></div>
+  <div class="chiffre"><div class="v">98,1 %</div><div class="t">ont au moins un transport à 5 min (bus, tram, vélo, bateau, Citiz)</div></div>
+  <div class="chiffre"><div class="v">6 644</div><div class="t">carreaux de 200 m habités, dont 1 983 masqués (≈ 3 % de la population)</div></div>
+  <div class="chiffre"><div class="v">2 419</div><div class="t">arrêts et stations : 1 962 bus, 133 tram, 222 vélo, 94 Citiz, 8 bateau</div></div>
+  <div class="chiffre"><div class="v">400 m</div><div class="t">= 5 min à pied (≈ 80 m/min), à vol d'oiseau</div></div>
+  <div class="chiffre"><div class="v">34 k€</div><div class="t">une station Citiz sur 3 ans · vélo 135 k€ · arrêt de bus 15 k€</div></div>
+  <div class="chiffre"><div class="v">0,944</div><div class="t">AUC du modèle Citiz · vélo 0,917 · bus 0,663</div></div>
+  <div class="chiffre large"><div class="v">1 M€ · 29 stations</div><div class="t">986 k€ dépensés · <b>+106 860 habitants</b> · couverture 27,3 % → <b>41,5 %</b> · 232 voitures en moins · 9 communes</div></div>
+</div>
+
+<div class="bloc-section">
+<div class="section"><span class="num">03</span><h2>Les termes à maîtriser</h2><span class="aide">Ton domaine : les données et Fabric</span></div>
+<div class="glossaire">
+  <div class="terme"><b>Carreau INSEE (Filosofi 2021)</b>Population découpée en carrés de 200 m de côté. C'est notre unité de base.</div>
+  <div class="terme"><b>Secret statistique</b>L'INSEE masque les carreaux de moins de 11 ménages. On ne les compte jamais.</div>
+  <div class="terme"><b>GBFS</b>Format standard ouvert des stations en libre-service (Citiz, vélos) : position, capacité.</div>
+  <div class="terme"><b>GTFS</b>Format standard des réseaux de transport (arrêts, lignes, horaires), publié par TBM.</div>
+  <div class="terme"><b>Microsoft Fabric</b>Plateforme data de Microsoft. Chez nous : l'espace HackathonZ, 6 notebooks et un Lakehouse.</div>
+  <div class="terme"><b>Lakehouse</b>Stockage de Fabric qui mélange tables (format Delta) et fichiers. Le nôtre : LakeHouseZ.</div>
+  <div class="terme"><b>Les notebooks</b>00 synchro GitHub · 01 INSEE · 02 GBFS · 03 GTFS · 04 accessibilité · 05 score et classement.</div>
+  <div class="terme"><b>Couche « gold »</b>Les fichiers finaux, propres, prêts pour l'application (carreaux, offre, recommandations).</div>
+  <div class="terme"><b>Garde-fou de collecte</b>Si une source tombe, on garde la dernière donnée valide au lieu de l'effacer.</div>
+  <div class="terme"><b>Reproductibilité</b>scikit-learn fixé en 1.5.2, la version de Fabric : mêmes chiffres en local et dans Fabric.</div>
+  <div class="terme"><b>Couverture · zone blanche</b>Part des habitants avec une station à 400 m · carreau sans aucun arrêt ni station (14 211 habitants).</div>
+  <div class="terme"><b>AUC · adéquation</b>Note du modèle (0,5 hasard, 1 parfait) · ressemblance d'un lieu avec les emplacements Citiz actuels.</div>
+</div>
+</div>
+
+<!-- ================= Questions ================= -->
+<div class="bloc-section"></div>
+<div class="section"><span class="num">04</span><h2>Les questions pour toi</h2><span class="aide">Dan prend le modèle, l'optimisation et l'app</span></div>
+
+<div class="qr"><div class="n">01</div><div><div class="q">Pourquoi Bordeaux ?</div><div class="court">Citiz y est déjà, donc on valide sur l'existant, et la marge est forte.</div><div class="detail">En Gironde, 6,2 stations pour 100 000 habitants et 13 % de la population à 5 min, contre 19,0 et 27 % dans le Bas-Rhin. Réseau riche (tram, bus, bateau, vélo) et fort contraste centre / périphérie.</div></div></div>
+
+<div class="qr"><div class="n">02</div><div><div class="q">Pourquoi Fabric ?</div><div class="court">Un seul endroit pour collecter, stocker et calculer.</div><div class="detail">Lakehouse en Delta, notebooks planifiables, lecture directe par Power BI. Les notebooks sont versionnés sur GitHub et synchronisés dans Fabric par le notebook 00.</div></div></div>
+
+<div class="qr"><div class="n">03</div><div><div class="q">L'app lit-elle Fabric en direct ?</div><div class="court">Non, c'est voulu : Fabric calcule, l'API sert le résultat.</div><div class="detail">Les fichiers gold sont exportés du Lakehouse et l'API FastAPI les charge. La démo reste rapide et ne dépend pas du réseau.</div></div></div>
+
+<div class="qr"><div class="n">04</div><div><div class="q">Vos chiffres sont-ils reproductibles ?</div><div class="court">Oui : même code, même version de scikit-learn (1.5.2) que Fabric.</div><div class="detail">Avec une autre version, le modèle bouge à la marge (+107 109 au lieu de +106 860). On a donc fixé la version dans requirements.txt, et le notebook 05 l'affiche à chaque exécution.</div></div></div>
+
+<div class="qr"><div class="n">05</div><div><div class="q">D'où viennent les coûts ?</div><div class="court">Sur 3 ans, investissement + fonctionnement, sourcés.</div><div class="detail">Citiz : 25 000 € (boîtier 4 000 €, véhicule ≈ 20 000 €, signalisation) + 3 000 €/an = 34 000 € ; convention Citiz du Genevois français 2023, prix du véhicule estimé. Vélo : 15 vélos × 3 000 €/an × 3 ans = 135 000 €. Arrêt de bus : 15 000 € (Cerema, 10 700 à 23 000 €).</div></div></div>
+
+<div class="qr"><div class="n">06</div><div><div class="q">Et l'impact carbone ?</div><div class="court">232 voitures en moins ; pas encore converti en CO₂.</div><div class="detail">Hypothèse du livre blanc Citiz 2025 : 8 voitures remplacées par voiture partagée. Pour des tonnes de CO₂, il faudrait un kilométrage qu'on n'a pas sourcé : c'est la suite logique.</div></div></div>
+
+<div class="qr"><div class="n">07</div><div><div class="q">Vous ne servez que le centre ?</div><div class="court">Non : 9 communes, et plus de ménages pauvres que la moyenne.</div><div class="detail">+50 % de valeur pour les habitants sans aucune option. À 1 M€ : Bordeaux 8, Mérignac 5, Cenon 4, Le Bouscat 3, puis Lormont, Talence, Pessac, Bègles, Villenave-d'Ornon. 20,5 % des ménages nouvellement desservis sont pauvres, contre 15,1 % en moyenne.</div></div></div>
+
+<div class="qr"><div class="n">08</div><div><div class="q">Et la vie privée ?</div><div class="court">Les carreaux masqués ne sont jamais affichés ni comptés.</div><div class="detail">Aucun indicateur social par carreau dans l'app. La pauvreté n'est utilisée qu'en agrégé, pour vérifier l'équité du plan.</div></div></div>
+
+<div class="qr"><div class="n">09</div><div><div class="q">Pourquoi 400 m à vol d'oiseau ?</div><div class="court">5 min à 80 m/min ; nos couvertures sont donc des plafonds.</div><div class="detail">Le vrai trajet dans les rues (OpenStreetMap) était prévu mais abandonné faute de temps. C'est la première amélioration.</div></div></div>
+
+<div class="qr"><div class="n">10</div><div><div class="q">Comment Citiz l'utilise dans une autre ville ?</div><div class="court">On change la liste des communes et le flux GTFS, on relance 01 à 05.</div><div class="detail">Toutes les sources sont nationales et ouvertes. L'API relit les nouveaux fichiers sans changer de code.</div></div></div>
+
+<div class="qr"><div class="n">11</div><div><div class="q">Les données sont-elles à jour ?</div><div class="court">Stations et arrêts collectés le 20/10/2026 ; population INSEE 2021.</div><div class="detail">Filosofi 2021 est le dernier millésime carroyé publié par l'INSEE.</div></div></div>
+
+</body>
+</html>
